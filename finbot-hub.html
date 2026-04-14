@@ -565,6 +565,93 @@ body{font-family:'Noto Sans Hebrew',sans-serif;background:var(--gr50);color:var(
         </div>
       </div>
 
+      <div class="card">
+        <div class="ch"><span class="ct"><div class="service-logo" style="background:#334155">🔐</div>ניהול סיסמאות</span></div>
+        <div class="cb">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:9px">החלפת סיסמה למשתמש המחובר</p>
+          <div class="api-row" style="margin-bottom:8px">
+            <input class="api-inp" type="password" id="pwdCurrent" placeholder="סיסמה נוכחית">
+          </div>
+          <div class="api-row" style="margin-bottom:8px">
+            <input class="api-inp" type="password" id="pwdNew" placeholder="סיסמה חדשה">
+          </div>
+          <div class="api-row" style="margin-bottom:10px">
+            <input class="api-inp" type="password" id="pwdConfirm" placeholder="אימות סיסמה חדשה">
+          </div>
+          <button class="btn bg" onclick="changeMyPassword()">שנה סיסמה</button>
+          <hr style="border:none;border-top:1px solid var(--gr200);margin:14px 0">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:9px">איפוס סיסמה לברירת מחדל</p>
+          <div class="api-row" style="margin-bottom:8px">
+            <input class="api-inp" type="text" id="pwdResetEmail" placeholder="אימייל משתמש לאיפוס">
+          </div>
+          <button class="btn bo" onclick="resetPasswordToDefault()">אפס סיסמה לברירת מחדל</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="agent-cfg-wrap">
+      <h3>🤖 הגדרות סוכנים — עריכת פרומטים</h3>
+
+      <div class="ap-card">
+        <div class="ap-hdr" onclick="toggleAgentCfg(this)">
+          <span class="ap-title">🎧 סוכן נציגים — הוראות מערכת</span>
+          <span class="ap-arrow">❯</span>
+        </div>
+        <div class="ap-body">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:8px">הפרומט שנשלח לסוכן הנציגים. מידע ממאגר הידע מוזן אוטומטית בסוף.</p>
+          <textarea class="ap-ta" id="aptRep"></textarea>
+          <div class="ap-actions">
+            <button class="btn" onclick="resetAgentPrompt('rep')">↩ אפס לברירת מחדל</button>
+            <button class="btn bg" onclick="saveAgentPrompt('rep')">💾 שמור</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ap-card">
+        <div class="ap-hdr" onclick="toggleAgentCfg(this)">
+          <span class="ap-title">👤 סוכן לקוחות — הוראות מערכת</span>
+          <span class="ap-arrow">❯</span>
+        </div>
+        <div class="ap-body">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:8px">הפרומט שנשלח לסוכן הלקוחות. מידע ממאגר הידע מוזן אוטומטית בסוף.</p>
+          <textarea class="ap-ta" id="aptCli"></textarea>
+          <div class="ap-actions">
+            <button class="btn" onclick="resetAgentPrompt('cli')">↩ אפס לברירת מחדל</button>
+            <button class="btn bg" onclick="saveAgentPrompt('cli')">💾 שמור</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ap-card">
+        <div class="ap-hdr" onclick="toggleAgentCfg(this)">
+          <span class="ap-title">📋 יוזר סטורי — הוראות מערכת</span>
+          <span class="ap-arrow">❯</span>
+        </div>
+        <div class="ap-body">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:8px">הפרומט שמייצר User Story מסודר.</p>
+          <textarea class="ap-ta" id="aptUs"></textarea>
+          <div class="ap-actions">
+            <button class="btn" onclick="resetAgentPrompt('us')">↩ אפס לברירת מחדל</button>
+            <button class="btn bg" onclick="saveAgentPrompt('us')">💾 שמור</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ap-card">
+        <div class="ap-hdr" onclick="toggleAgentCfg(this)">
+          <span class="ap-title">🐛 דיווח באג — הוראות מערכת</span>
+          <span class="ap-arrow">❯</span>
+        </div>
+        <div class="ap-body">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:8px">הפרומט שמייצר דוח באג מסודר.</p>
+          <textarea class="ap-ta" id="aptBug"></textarea>
+          <div class="ap-actions">
+            <button class="btn" onclick="resetAgentPrompt('bug')">↩ אפס לברירת מחדל</button>
+            <button class="btn bg" onclick="saveAgentPrompt('bug')">💾 שמור</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -584,12 +671,38 @@ body{font-family:'Noto Sans Hebrew',sans-serif;background:var(--gr50);color:var(
 
 <script>
 const SRV = 'http://localhost:3000';
-const USERS = [
-  { email: 'kati@finbot.co.il', password: 'finbot123', role: 'admin', name: 'Kati' },
-  { email: 'user@finbot.co.il', password: 'finbot123', role: 'user', name: 'Team User' }
+const DEFAULT_USERS = [
+  { email: 'kati@finbot.co.il', password: '123456789', role: 'admin', name: 'Kati' },
+  { email: 'user@finbot.co.il', password: '123456789', role: 'user', name: 'Team User' }
 ];
 const RESTRICTED_PAGES = new Set(['us', 'bug']);
 let currentUser = null;
+let users = loadUsers();
+
+function loadUsers() {
+  try {
+    const raw = localStorage.getItem('finbotUsers');
+    if (!raw) return DEFAULT_USERS.map(u => ({ ...u }));
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return DEFAULT_USERS.map(u => ({ ...u }));
+    const valid = parsed.filter(u => u && u.email && u.password && u.role);
+    return valid.length ? valid : DEFAULT_USERS.map(u => ({ ...u }));
+  } catch (e) {
+    return DEFAULT_USERS.map(u => ({ ...u }));
+  }
+}
+
+function saveUsers() {
+  localStorage.setItem('finbotUsers', JSON.stringify(users));
+}
+
+function getDefaultUserByEmail(email) {
+  return DEFAULT_USERS.find(u => u.email.toLowerCase() === String(email || '').toLowerCase());
+}
+
+function getUserByEmail(email) {
+  return users.find(u => u.email.toLowerCase() === String(email || '').toLowerCase());
+}
 
 const pgCfg = {
   kb:  ['מאגר ידע','ניהול מסמכים לאימון הסוכנים',true],
@@ -609,72 +722,6 @@ function go(id, btn) {
     id = 'kb';
     btn = document.getElementById('nav-kb');
   }
-
-
-      <!-- הגדרות סוכנים -->
-      <div class="agent-cfg-wrap">
-        <h3>🤖 הגדרות סוכנים — עריכת פרומטים</h3>
-
-        <div class="ap-card">
-          <div class="ap-hdr" onclick="toggleAgentCfg(this)">
-            <span class="ap-title">🎧 סוכן נציגים — הוראות מערכת</span>
-            <span class="ap-arrow">❯</span>
-          </div>
-          <div class="ap-body">
-            <p style="font-size:12px;color:var(--gr400);margin-bottom:8px">הפרומט שנשלח לסוכן הנציגים. מידע ממאגר הידע מוזן אוטומטית בסוף.</p>
-            <textarea class="ap-ta" id="aptRep"></textarea>
-            <div class="ap-actions">
-              <button class="btn" onclick="resetAgentPrompt('rep')">↩ אפס לברירת מחדל</button>
-              <button class="btn bg" onclick="saveAgentPrompt('rep')">💾 שמור</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="ap-card">
-          <div class="ap-hdr" onclick="toggleAgentCfg(this)">
-            <span class="ap-title">👤 סוכן לקוחות — הוראות מערכת</span>
-            <span class="ap-arrow">❯</span>
-          </div>
-          <div class="ap-body">
-            <p style="font-size:12px;color:var(--gr400);margin-bottom:8px">הפרומט שנשלח לסוכן הלקוחות. מידע ממאגר הידע מוזן אוטומטית בסוף.</p>
-            <textarea class="ap-ta" id="aptCli"></textarea>
-            <div class="ap-actions">
-              <button class="btn" onclick="resetAgentPrompt('cli')">↩ אפס לברירת מחדל</button>
-              <button class="btn bg" onclick="saveAgentPrompt('cli')">💾 שמור</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="ap-card">
-          <div class="ap-hdr" onclick="toggleAgentCfg(this)">
-            <span class="ap-title">📋 יוזר סטורי — הוראות מערכת</span>
-            <span class="ap-arrow">❯</span>
-          </div>
-          <div class="ap-body">
-            <p style="font-size:12px;color:var(--gr400);margin-bottom:8px">הפרומט שמייצר User Story מסודר.</p>
-            <textarea class="ap-ta" id="aptUs"></textarea>
-            <div class="ap-actions">
-              <button class="btn" onclick="resetAgentPrompt('us')">↩ אפס לברירת מחדל</button>
-              <button class="btn bg" onclick="saveAgentPrompt('us')">💾 שמור</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="ap-card">
-          <div class="ap-hdr" onclick="toggleAgentCfg(this)">
-            <span class="ap-title">🐛 דיווח באג — הוראות מערכת</span>
-            <span class="ap-arrow">❯</span>
-          </div>
-          <div class="ap-body">
-            <p style="font-size:12px;color:var(--gr400);margin-bottom:8px">הפרומט שמייצר דוח באג מסודר.</p>
-            <textarea class="ap-ta" id="aptBug"></textarea>
-            <div class="ap-actions">
-              <button class="btn" onclick="resetAgentPrompt('bug')">↩ אפס לברירת מחדל</button>
-              <button class="btn bg" onclick="saveAgentPrompt('bug')">💾 שמור</button>
-            </div>
-          </div>
-        </div>
-      </div>
 
   document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
   if (btn) btn.classList.add('on');
@@ -715,7 +762,7 @@ function login() {
   const email = document.getElementById('authEmail').value.trim().toLowerCase();
   const password = document.getElementById('authPassword').value;
   const err = document.getElementById('authErr');
-  const user = USERS.find(u => u.email.toLowerCase() === email && u.password === password);
+  const user = users.find(u => u.email.toLowerCase() === email && u.password === password);
   if (!user) {
     if (err) err.style.display = 'block';
     return;
@@ -729,6 +776,7 @@ function login() {
   loadKeyStatus();
   loadHJDomainInput();
   initAgentPromptUi();
+  initPasswordUi();
 }
 
 function logout() {
@@ -776,7 +824,7 @@ function initAuth() {
   if (!raw) return;
   try {
     const saved = JSON.parse(raw);
-    const user = USERS.find(u => u.email === saved.email);
+    const user = getUserByEmail(saved.email);
     if (user) {
       setCurrentUser(user);
       document.getElementById('authOverlay').style.display = 'none';
@@ -784,10 +832,54 @@ function initAuth() {
       loadKeyStatus();
       loadHJDomainInput();
       initAgentPromptUi();
+      initPasswordUi();
     }
   } catch(e) {
     localStorage.removeItem('finbotUser');
   }
+}
+
+function initPasswordUi() {
+  const em = document.getElementById('pwdResetEmail');
+  if (em && currentUser) em.value = currentUser.email;
+}
+
+function changeMyPassword() {
+  if (!currentUser) { alert('יש להתחבר תחילה'); return; }
+  const cur = document.getElementById('pwdCurrent').value;
+  const nw = document.getElementById('pwdNew').value;
+  const cf = document.getElementById('pwdConfirm').value;
+  if (!cur || !nw || !cf) { alert('יש למלא את כל השדות'); return; }
+  const me = getUserByEmail(currentUser.email);
+  if (!me || me.password !== cur) { alert('הסיסמה הנוכחית אינה נכונה'); return; }
+  if (nw.length < 6) { alert('הסיסמה החדשה חייבת להכיל לפחות 6 תווים'); return; }
+  if (nw !== cf) { alert('אימות הסיסמה החדשה אינו תואם'); return; }
+  me.password = nw;
+  saveUsers();
+  document.getElementById('pwdCurrent').value = '';
+  document.getElementById('pwdNew').value = '';
+  document.getElementById('pwdConfirm').value = '';
+  alert('✅ הסיסמה הוחלפה בהצלחה');
+}
+
+function resetPasswordToDefault() {
+  if (!currentUser) { alert('יש להתחבר תחילה'); return; }
+  const targetEmail = (document.getElementById('pwdResetEmail').value || '').trim().toLowerCase();
+  if (!targetEmail) { alert('יש להזין אימייל לאיפוס'); return; }
+
+  const isAdmin = currentUser.role === 'admin';
+  if (!isAdmin && targetEmail !== currentUser.email.toLowerCase()) {
+    alert('משתמש רגיל יכול לאפס רק את הסיסמה של עצמו');
+    return;
+  }
+
+  const target = getUserByEmail(targetEmail);
+  if (!target) { alert('לא נמצא משתמש עם האימייל הזה'); return; }
+  const def = getDefaultUserByEmail(targetEmail);
+  if (!def) { alert('אין סיסמת ברירת מחדל למשתמש הזה'); return; }
+  target.password = def.password;
+  saveUsers();
+  alert('✅ הסיסמה אופסה לברירת מחדל');
 }
 
 // ===== מאגר ידע =====
