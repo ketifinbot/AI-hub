@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinBot AI Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g50:#f0fdf4;--g100:#dcfce7;--g200:#bbf7d0;--g400:#4ade80;--g500:#22c55e;--g600:#16a34a;--g700:#15803d;
+  --o50:#fff7ed;--o100:#ffedd5;--o200:#fed7aa;--o400:#fb923c;--o500:#f97316;--o600:#ea580c;
+  --gr50:#f8fafc;--gr100:#f1f5f9;--gr200:#e2e8f0;--gr300:#cbd5e1;--gr400:#94a3b8;--gr500:#64748b;--gr600:#475569;--gr700:#334155;--gr800:#1e293b;
+  --ind50:#eef2ff;--ind500:#6366f1;--ind600:#4f46e5;
+  --white:#fff;
+  --sw:260px;--r:12px;--rs:8px;--rl:16px;
+  --sh:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04);
+}
+body{font-family:'Noto Sans Hebrew',sans-serif;background:var(--gr50);color:var(--gr800);display:flex;min-height:100vh;direction:rtl}
+
+/* SIDEBAR */
+.sb{width:var(--sw);min-width:var(--sw);background:var(--white);border-left:1px solid var(--gr200);display:flex;flex-direction:column;position:fixed;right:0;top:0;height:100vh;z-index:100}
+.sb-logo{padding:18px 16px 14px;border-bottom:1px solid var(--gr100);display:flex;align-items:center;gap:10px}
+.logo-leaf{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#a8e6cf,#f9c78b);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.logo-txt{font-family:'Playfair Display',serif;font-size:17px;color:var(--gr800)}
+.logo-txt span{color:var(--o500)}
+.sb-nav{flex:1;overflow-y:auto;padding:10px 8px}
+.nav-lbl{font-size:10px;font-weight:600;letter-spacing:.7px;color:var(--gr400);text-transform:uppercase;padding:12px 8px 5px}
+.nb{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border:none;border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:400;color:var(--gr600);background:transparent;text-align:right;margin-bottom:1px;transition:all .15s;font-family:'Noto Sans Hebrew',sans-serif}
+.nb:hover{background:var(--gr100);color:var(--gr800)}
+.nb.on{background:var(--g50);color:var(--g700);font-weight:600}
+.nb .ni{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.nb .nbadge{margin-right:auto;background:var(--g100);color:var(--g700);font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px}
+.nb.on .nbadge{background:var(--g200);color:var(--g700)}
+.ndiv{height:1px;background:var(--gr100);margin:7px 8px}
+.sb-foot{padding:12px 14px;border-top:1px solid var(--gr100);background:var(--gr50)}
+.urow{display:flex;align-items:center;gap:9px}
+.uav{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--o400),var(--o500));display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:600;flex-shrink:0}
+.uname{font-size:12.5px;font-weight:500;color:var(--gr700)}
+.urole{font-size:11px;color:var(--gr400)}
+.privacy{margin-top:8px;font-size:10.5px;color:var(--gr400)}
+.privacy a{color:var(--gr400);text-decoration:underline;cursor:pointer;margin-left:10px}
+
+/* MAIN */
+.main{flex:1;margin-right:var(--sw);display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--white);border-bottom:1px solid var(--gr200);padding:0 24px;height:54px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.tb-l{display:flex;align-items:center;gap:6px}
+.tb-title{font-size:14px;font-weight:600;color:var(--gr800)}
+.tb-sep{color:var(--gr300);font-size:12px;margin:0 2px}
+.tb-sub{font-size:12.5px;color:var(--gr400)}
+.tb-r{display:flex;gap:8px;align-items:center}
+
+/* PAGES */
+.page{display:none;padding:26px;animation:fup .25s ease}
+.page.on{display:block}
+@keyframes fup{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.ph{margin-bottom:20px}
+.pt{font-family:'Playfair Display',serif;font-size:22px;color:var(--gr800);margin-bottom:3px}
+.pd{font-size:13px;color:var(--gr400)}
+
+/* CARDS */
+.card{background:var(--white);border-radius:var(--r);border:1px solid var(--gr200);box-shadow:var(--sh);margin-bottom:14px;overflow:hidden}
+.ch{padding:13px 18px;border-bottom:1px solid var(--gr100);display:flex;align-items:center;justify-content:space-between}
+.ct{font-size:13.5px;font-weight:600;color:var(--gr700);display:flex;align-items:center;gap:8px}
+.cb{padding:18px}
+
+/* STATS */
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.sc{background:var(--white);border-radius:var(--r);border:1px solid var(--gr200);padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.si{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.sig{background:var(--g100)}.sio{background:var(--o100)}.sib{background:#dbeafe}
+.sn{font-size:22px;font-weight:700;color:var(--gr800);line-height:1}
+.sl{font-size:11.5px;color:var(--gr400);margin-top:2px}
+
+/* UPLOAD */
+.uz{border:2px dashed var(--gr300);border-radius:var(--rs);padding:26px;text-align:center;cursor:pointer;transition:all .2s;background:var(--gr50)}
+.uz:hover,.uz.drag{border-color:var(--g400);background:var(--g50)}
+.ui{font-size:28px;margin-bottom:7px}
+.ut{font-size:13.5px;font-weight:600;color:var(--gr700);margin-bottom:3px}
+.us{font-size:12px;color:var(--gr400)}
+.tags{display:flex;gap:5px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.tg{background:var(--g100);color:var(--g700);font-size:10.5px;font-weight:600;padding:2px 9px;border-radius:20px}
+.to{background:var(--o100);color:var(--o600);font-size:10.5px;font-weight:600;padding:2px 9px;border-radius:20px}
+.ti{background:var(--ind50);color:var(--ind600);font-size:10.5px;font-weight:600;padding:2px 9px;border-radius:20px}
+
+/* TEXTAREA & INPUT */
+.ta{width:100%;border:1.5px solid var(--gr200);border-radius:var(--rs);padding:10px 12px;font-size:13.5px;font-family:'Noto Sans Hebrew',sans-serif;resize:vertical;outline:none;direction:rtl;color:var(--gr800);background:var(--white);transition:border-color .2s;line-height:1.6}
+.ta:focus{border-color:var(--g400)}
+.ta::placeholder{color:var(--gr300)}
+.inp{width:100%;border:1.5px solid var(--gr200);border-radius:var(--rs);padding:8px 12px;font-size:13px;font-family:'Noto Sans Hebrew',sans-serif;outline:none;direction:rtl;color:var(--gr800);background:var(--white);transition:border-color .2s}
+.inp:focus{border-color:var(--g400)}
+.inp-ltr{direction:ltr;text-align:left}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--rs);font-size:13px;font-weight:600;font-family:'Noto Sans Hebrew',sans-serif;cursor:pointer;border:none;transition:all .18s;white-space:nowrap}
+.bg{background:var(--g500);color:white;box-shadow:0 2px 6px rgba(34,197,94,.22)}
+.bg:hover{background:var(--g600);transform:translateY(-1px)}
+.bo{background:var(--o500);color:white;box-shadow:0 2px 6px rgba(249,115,22,.22)}
+.bo:hover{background:var(--o600);transform:translateY(-1px)}
+.bgh{background:transparent;color:var(--gr500);border:1.5px solid var(--gr200)}
+.bgh:hover{border-color:var(--g400);color:var(--g600)}
+.bind{background:var(--ind50);color:var(--ind600);border:1px solid #c7d2fe}
+.bind:hover{background:var(--ind500);color:white}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+.bfull{width:100%;justify-content:center}
+
+/* SYNC CARD */
+.sync-box{background:var(--white);border-radius:var(--r);border:1px solid var(--gr200);box-shadow:var(--sh);margin-bottom:14px;overflow:hidden}
+.sync-hdr{padding:13px 18px;border-bottom:1px solid var(--gr100);display:flex;align-items:center;justify-content:space-between}
+.hj-logo{width:32px;height:32px;background:var(--ind600);border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-size:10px;font-weight:700;flex-shrink:0}
+.sync-body{padding:16px 18px}
+.sync-row{display:flex;align-items:center;gap:12px}
+.sync-info{flex:1}
+.sync-name{font-size:13.5px;font-weight:600;color:var(--gr700)}
+.sync-sub{font-size:11.5px;color:var(--gr400);margin-top:2px}
+.sync-st{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--g600)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--g500)}
+.sdiv{height:1px;background:var(--gr100);margin:12px 0}
+.sstats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sstat{text-align:center;padding:9px;background:var(--gr50);border-radius:8px}
+.sstat-n{font-size:20px;font-weight:700;color:var(--gr800)}
+.sstat-l{font-size:10.5px;color:var(--gr400);margin-top:2px}
+.last-sync{font-size:11px;color:var(--gr400);text-align:center;margin-top:10px}
+
+/* DOC LIST */
+.dlist{display:flex;flex-direction:column;gap:7px}
+.di{display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--gr200);border-radius:var(--rs);background:var(--white);transition:all .15s}
+.di:hover{border-color:var(--g300);background:var(--g50)}
+.dd{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ddg{background:var(--g500)}.ddi{background:var(--ind500)}
+.dname{font-size:13.5px;font-weight:500;flex:1}
+.dmeta{font-size:11px;color:var(--gr400);margin-top:1px}
+.dbadge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;flex-shrink:0}
+.dbg{background:var(--g100);color:var(--g700)}
+.dbi{background:var(--ind50);color:var(--ind600)}
+.btn-del{background:none;border:none;cursor:pointer;color:var(--gr300);font-size:14px;padding:3px 5px;border-radius:5px;transition:all .15s}
+.btn-del:hover{background:#fee2e2;color:#ef4444}
+.legend{display:flex;gap:14px;margin-top:12px;flex-wrap:wrap}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--gr400)}
+.pager{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;flex-wrap:wrap}
+.pg-btn{border:1px solid var(--gr200);background:var(--white);color:var(--gr600);border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:'Noto Sans Hebrew',sans-serif}
+.pg-btn:hover{border-color:var(--g300);color:var(--g700)}
+.pg-btn.on{background:var(--g500);border-color:var(--g500);color:#fff}
+.pg-btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* CHAT */
+.chat-layout{display:grid;grid-template-columns:1fr 290px;gap:14px}
+.chat-win{display:flex;flex-direction:column;border:1px solid var(--gr200);border-radius:var(--r);overflow:hidden;background:var(--white);height:500px}
+.chat-hdr{padding:13px 16px;border-bottom:1px solid var(--gr100);display:flex;align-items:center;justify-content:space-between}
+.chat-st{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;color:var(--gr700)}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--g500);box-shadow:0 0 0 2px rgba(34,197,94,.2)}
+.msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--gr50)}
+.msg{display:flex;gap:9px;max-width:82%}
+.msg.bot{align-self:flex-start}
+.msg.user{align-self:flex-end;flex-direction:row-reverse}
+.mav{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;margin-top:2px}
+.msg.bot .mav{background:var(--g100)}
+.msg.user .mav{background:var(--o100)}
+.mb{padding:9px 13px;border-radius:12px;font-size:13.5px;line-height:1.6}
+.msg.bot .mb{background:var(--white);border:1px solid var(--gr200);color:var(--gr700);border-radius:4px 12px 12px 12px}
+.msg.user .mb{background:var(--g500);color:white;border-radius:12px 4px 12px 12px}
+.chat-inp-row{display:flex;gap:8px;padding:11px 13px;border-top:1px solid var(--gr100);background:var(--white)}
+.chat-inp{flex:1;border:1.5px solid var(--gr200);border-radius:var(--rs);padding:8px 12px;font-size:13.5px;font-family:'Noto Sans Hebrew',sans-serif;outline:none;direction:rtl;transition:border-color .2s}
+.chat-inp:focus{border-color:var(--g400)}
+.chat-send{background:var(--g500);color:white;border:none;padding:8px 14px;border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:600;font-family:'Noto Sans Hebrew',sans-serif;transition:all .18s}
+.chat-send:hover{background:var(--g600)}
+.chat-send:disabled{opacity:.5;cursor:not-allowed}
+.info-card{background:var(--white);border-radius:var(--r);border:1px solid var(--gr200);margin-bottom:12px;overflow:hidden}
+.ic-hdr{padding:11px 14px;border-bottom:1px solid var(--gr100);font-size:13px;font-weight:600;color:var(--gr700)}
+.ic-body{padding:13px 14px}
+.irow{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--gr100);font-size:13px}
+.irow:last-child{border-bottom:none}
+.ival{font-weight:700;color:var(--g600)}
+.mode-opt{display:flex;align-items:center;gap:8px;padding:8px 11px;border:1.5px solid var(--gr200);border-radius:var(--rs);cursor:pointer;font-size:12.5px;font-weight:500;margin-bottom:7px;transition:all .15s;color:var(--gr600);font-family:'Noto Sans Hebrew',sans-serif}
+.mode-opt:hover{border-color:var(--g300)}
+.mode-opt.on{border-color:var(--g500);background:var(--g50);color:var(--g700);font-weight:600}
+
+/* QA */
+.qa-layout{display:grid;grid-template-columns:1fr 270px;gap:14px}
+.qa-item{background:var(--white);border-radius:var(--r);border:1px solid var(--gr200);overflow:hidden;margin-bottom:9px;transition:box-shadow .15s}
+.qa-item:hover{box-shadow:var(--sh)}
+.qa-q{padding:13px 16px;display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--gr700)}
+.qa-qi{color:var(--o500);font-size:14px;flex-shrink:0}
+.qa-qt{flex:1}
+.qa-qm{font-size:11px;color:var(--gr400);font-weight:400}
+.qa-a{padding:0 16px 13px;font-size:13px;color:var(--gr500);line-height:1.7;display:none;border-top:1px solid var(--gr100)}
+.qa-a.open{display:block}
+.qa-al{font-size:11px;color:var(--g600);font-weight:700;padding:9px 0 6px}
+
+/* SETTINGS */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.api-row{display:flex;gap:8px;align-items:center}
+.api-inp{flex:1;border:1.5px solid var(--gr200);border-radius:var(--rs);padding:8px 12px;font-size:13px;font-family:'Noto Sans Hebrew',sans-serif;outline:none;direction:ltr;text-align:left;color:var(--gr700);transition:border-color .2s}
+.api-inp:focus{border-color:var(--g400)}
+.api-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.api-dot.on{background:var(--g500)}
+.api-dot.off{background:var(--gr300)}
+.service-logo{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+
+/* ARTICLE/US/BUG */
+.result-box{background:var(--gr50);border-radius:var(--rs);padding:16px;font-size:13.5px;line-height:1.8;color:var(--gr700);white-space:pre-wrap;direction:rtl}
+
+/* MISC */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:rot .7s linear infinite;vertical-align:middle}
+@keyframes rot{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:32px;color:var(--gr400);font-size:13px}
+.empty-i{font-size:32px;margin-bottom:8px}
+</style>
+</head>
+<body>
+
+<aside class="sb">
+  <div class="sb-logo">
+    <div class="logo-leaf">🌿</div>
+    <div class="logo-txt">Fin<span>Bot</span> Hub</div>
+  </div>
+  <nav class="sb-nav">
+    <div class="nav-lbl">מאגר ידע</div>
+    <button class="nb on" onclick="go('kb',this)"><span class="ni">📚</span>מאגר ידע<span class="nbadge" id="kbN">0</span></button>
+    <button class="nb" onclick="go('rep',this)"><span class="ni">🎧</span>סוכן נציגים</button>
+    <button class="nb" onclick="go('cli',this)"><span class="ni">👤</span>סוכן לקוחות</button>
+    <div class="ndiv"></div>
+    <div class="nav-lbl">יצירת תוכן</div>
+    <button class="nb" onclick="go('art',this)"><span class="ni">✍️</span>יצירת מאמר</button>
+    <button class="nb" onclick="go('us',this)"><span class="ni">📋</span>יוזר סטורי</button>
+    <button class="nb" onclick="go('bug',this)"><span class="ni">🐛</span>דיווח באג</button>
+    <div class="ndiv"></div>
+    <div class="nav-lbl">מערכת</div>
+    <button class="nb" onclick="go('cfg',this)"><span class="ni">⚙️</span>הגדרות וחיבורים</button>
+  </nav>
+  <div class="sb-foot">
+    <div class="urow">
+      <div class="uav">K</div>
+      <div><div class="uname">kati@finbot.co.il</div><div class="urole">Admin</div></div>
+    </div>
+    <div class="privacy"><a>Privacy Policy</a><a>Terms of Service</a></div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div class="tb-l">
+      <span class="tb-title" id="tbT">מאגר ידע</span>
+      <span class="tb-sep">›</span>
+      <span class="tb-sub" id="tbS">ניהול מסמכים לאימון הסוכנים</span>
+    </div>
+    <div class="tb-r">
+      <button class="btn bgh" style="font-size:12px" onclick="loadDocs()">🔄 רענן</button>
+      <button class="btn bg" id="tbBtn" onclick="document.getElementById('fIn').click()">+ העלה מסמך</button>
+    </div>
+  </div>
+
+  <!-- מאגר ידע -->
+  <div class="page on" id="p-kb">
+    <div class="ph"><div class="pt">מאגר ידע</div><div class="pd">מקורות מידע לאימון הסוכנים — HelpJuice, קבצים, וטקסט</div></div>
+
+    <div class="sgrid">
+      <div class="sc"><div class="si sig">📄</div><div><div class="sn" id="s1">0</div><div class="sl">מסמכים במאגר</div></div></div>
+      <div class="sc"><div class="si sio">🤖</div><div><div class="sn">2</div><div class="sl">סוכנים פעילים</div></div></div>
+      <div class="sc"><div class="si sib">📊</div><div><div class="sn" id="s3">0</div><div class="sl">שאלות נענו היום</div></div></div>
+    </div>
+
+    <!-- סינכרון HelpJuice -->
+    <div class="sync-box">
+      <div class="sync-hdr">
+        <div class="ct"><div class="hj-logo">HJ</div>סינכרון מ-HelpJuice</div>
+        <button class="btn bind" onclick="syncHJ()" id="btnSync">🔄 סנכרן עכשיו</button>
+      </div>
+      <div class="sync-body">
+        <div class="sync-row">
+          <div class="sync-info">
+            <div class="sync-name" id="hjDomain">לא מוגדר — הגדר API בהגדרות</div>
+            <div class="sync-sub">סינכרון אוטומטי כל 24 שעות</div>
+          </div>
+          <div class="sync-st" id="hjSt"><div class="sync-dot" style="background:var(--gr300)"></div>לא מחובר</div>
+        </div>
+        <div class="sdiv"></div>
+        <div class="sstats">
+          <div class="sstat"><div class="sstat-n" id="hjArt">—</div><div class="sstat-l">מאמרים</div></div>
+          <div class="sstat"><div class="sstat-n" id="hjCat">—</div><div class="sstat-l">קטגוריות</div></div>
+          <div class="sstat"><div class="sstat-n" id="hjUpd">—</div><div class="sstat-l">עדכון אחרון</div></div>
+        </div>
+        <div class="last-sync" id="hjLast">לא בוצע סינכרון עדיין</div>
+      </div>
+    </div>
+
+    <!-- העלאה ידנית -->
+    <div class="two-col">
+      <div class="card">
+        <div class="ch"><span class="ct">☁️ העלאת קובץ</span></div>
+        <div class="cb">
+          <div class="uz" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="onDrop(event)" onclick="document.getElementById('fIn').click()">
+            <div class="ui">📁</div>
+            <div class="ut">גרור קובץ לכאן</div>
+            <div class="us">או לחץ לבחירת קובץ</div>
+            <div class="tags"><span class="tg">PDF</span><span class="tg">Word</span><span class="to">TXT</span><span class="to">HTML</span></div>
+          </div>
+          <input type="file" id="fIn" style="display:none" multiple accept=".pdf,.doc,.docx,.txt,.html,.htm" onchange="uploadFiles(this.files)">
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ct">✏️ הדבקת טקסט</span></div>
+        <div class="cb">
+          <textarea class="ta" id="ptxt" placeholder="הדבק כאן טקסט, מדריך, נהלים, שאלות ותשובות..." style="min-height:110px"></textarea>
+          <input class="inp" id="pname" placeholder="שם המסמך" style="margin-top:7px;margin-bottom:8px">
+          <button class="btn bg bfull" onclick="savePasted()">💾 שמור למאגר</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- רשימת מסמכים -->
+    <div class="card">
+      <div class="ch">
+        <span class="ct">📚 כל המסמכים</span>
+        <span style="font-size:12px;color:var(--gr400)" id="dCount">0 מסמכים</span>
+      </div>
+      <div class="cb">
+        <div class="dlist" id="dList"><div class="empty"><div class="empty-i">📭</div>אין מסמכים עדיין</div></div>
+        <div class="legend">
+          <div class="leg-item"><div style="width:7px;height:7px;border-radius:50%;background:var(--ind500)"></div>מסונכרן מ-HelpJuice</div>
+          <div class="leg-item"><div style="width:7px;height:7px;border-radius:50%;background:var(--g500)"></div>הועלה ידנית</div>
+        </div>
+        <div class="pager" id="dPager"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- סוכן נציגים -->
+  <div class="page" id="p-rep">
+    <div class="ph"><div class="pt">סוכן נציגים 🎧</div><div class="pd">עונה לנציגי תמיכה על בסיס מאגר הידע</div></div>
+    <div class="chat-layout">
+      <div class="chat-win">
+        <div class="chat-hdr">
+          <div class="chat-st"><div class="sdot"></div>סוכן נציגים — מוכן</div>
+          <button class="btn bgh" style="font-size:12px;padding:5px 11px" onclick="clrChat('rep')">נקה שיחה</button>
+        </div>
+        <div class="msgs" id="msgs-rep">
+          <div class="msg bot"><div class="mav">🎧</div><div class="mb">שלום! אני סוכן הנציגים. אענה על בסיס מאגר הידע. במה אוכל לעזור?</div></div>
+        </div>
+        <div class="chat-inp-row">
+          <input class="chat-inp" id="inp-rep" placeholder="שאל שאלה..." onkeydown="if(event.key==='Enter')send('rep')">
+          <button class="chat-send" id="sbtn-rep" onclick="send('rep')">שלח</button>
+        </div>
+      </div>
+      <div>
+        <div class="info-card">
+          <div class="ic-hdr">📊 סטטוס</div>
+          <div class="ic-body">
+            <div class="irow"><span>מסמכים פעילים</span><span class="ival" id="rep-dc">0</span></div>
+            <div class="irow"><span>שאלות בשיחה</span><span class="ival" id="rep-qc">0</span></div>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="ic-hdr">🎯 מצב סוכן</div>
+          <div class="ic-body">
+            <div class="mode-opt on" onclick="setMode(this,'rep','kb')">📚 מאגר בלבד</div>
+            <div class="mode-opt" onclick="setMode(this,'rep','all')">🌐 מאגר + ידע כללי</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- סוכן לקוחות -->
+  <div class="page" id="p-cli">
+    <div class="ph"><div class="pt">סוכן לקוחות 👤</div><div class="pd">עונה לרואי חשבון — מאגר ידע בלבד</div></div>
+    <div class="chat-layout">
+      <div class="chat-win">
+        <div class="chat-hdr">
+          <div class="chat-st"><div class="sdot"></div>סוכן לקוחות — מוכן</div>
+          <button class="btn bgh" style="font-size:12px;padding:5px 11px" onclick="clrChat('cli')">נקה שיחה</button>
+        </div>
+        <div class="msgs" id="msgs-cli">
+          <div class="msg bot"><div class="mav">👤</div><div class="mb">שלום! אני הסוכן לרואי חשבון. אשמח לעזור בכל שאלה על FinBot.</div></div>
+        </div>
+        <div class="chat-inp-row">
+          <input class="chat-inp" id="inp-cli" placeholder="שאל שאלה..." onkeydown="if(event.key==='Enter')send('cli')">
+          <button class="chat-send" id="sbtn-cli" onclick="send('cli')">שלח</button>
+        </div>
+      </div>
+      <div>
+        <div class="info-card">
+          <div class="ic-hdr">📊 סטטוס</div>
+          <div class="ic-body">
+            <div class="irow"><span>מסמכים פעילים</span><span class="ival" id="cli-dc">0</span></div>
+            <div class="irow"><span>שאלות בשיחה</span><span class="ival" id="cli-qc">0</span></div>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="ic-hdr">🔒 מגבלת סוכן</div>
+          <div class="ic-body" style="font-size:12.5px;color:var(--gr500);line-height:1.6">
+            סוכן לקוחות עונה <strong>מהמאגר בלבד</strong>. אין גישה לידע כללי — רק מידע מאושר.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- יצירת מאמר -->
+  <div class="page" id="p-art">
+    <div class="ph"><div class="pt">יצירת מאמר HelpJuice ✍️</div><div class="pd">הדבק תוכן — הסוכן יייצר HTML מוכן לפרסום</div></div>
+    <div class="card">
+      <div class="ch"><span class="ct">📝 תוכן המאמר</span></div>
+      <div class="cb">
+        <textarea class="ta" id="artIn" placeholder="הדבק כאן יוזר סטורי, תיאור מסך, הוראות..." style="min-height:180px"></textarea>
+        <div style="display:flex;gap:9px;margin-top:11px">
+          <button class="btn bg" onclick="genArt()" id="btnArt">✦ צור מאמר HelpJuice</button>
+          <button class="btn bgh" onclick="document.getElementById('artIn').value=''">נקה</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" id="artCard" style="display:none">
+      <div class="ch">
+        <span class="ct">👁️ תצוגה מקדימה</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn bgh" style="font-size:12px" onclick="cpArt()">📋 העתק HTML</button>
+          <button class="btn bg" onclick="pubHJ()">🚀 פרסם ל-HelpJuice</button>
+        </div>
+      </div>
+      <div class="cb" id="artPrev" style="direction:ltr"></div>
+    </div>
+  </div>
+
+  <!-- יוזר סטורי -->
+  <div class="page" id="p-us">
+    <div class="ph"><div class="pt">יוזר סטורי 📋</div><div class="pd">תאר פיצ׳ר — הסוכן יכין יוזר סטורי מסודר</div></div>
+    <div class="card">
+      <div class="ch"><span class="ct">💡 תיאור הפיצ׳ר</span></div>
+      <div class="cb">
+        <textarea class="ta" id="usIn" placeholder="תאר את הפיצ׳ר, הצורך של המשתמש, לוגיקה עסקית, edge cases..." style="min-height:160px"></textarea>
+        <button class="btn bg" style="margin-top:11px" onclick="genUS()" id="btnUS">📋 צור יוזר סטורי</button>
+      </div>
+    </div>
+    <div class="card" id="usCard" style="display:none">
+      <div class="ch">
+        <span class="ct">📄 יוזר סטורי</span>
+        <button class="btn bgh" style="font-size:12px" onclick="navigator.clipboard.writeText(window._usT||'');alert('✅ הועתק!')">📋 העתק</button>
+      </div>
+      <div class="cb"><div class="result-box" id="usOut"></div></div>
+    </div>
+  </div>
+
+  <!-- באג -->
+  <div class="page" id="p-bug">
+    <div class="ph"><div class="pt">דיווח באג 🐛</div><div class="pd">תאר את הבאג — הסוכן יכין דוח מסודר</div></div>
+    <div class="card">
+      <div class="ch"><span class="ct">🔍 תיאור הבאג</span></div>
+      <div class="cb">
+        <textarea class="ta" id="bugIn" placeholder="תאר את הבאג — מה קרה, מה ציפית, שלבי שחזור..." style="min-height:160px"></textarea>
+        <button class="btn bo" style="margin-top:11px" onclick="genBug()" id="btnBug">🐛 צור דוח באג</button>
+      </div>
+    </div>
+    <div class="card" id="bugCard" style="display:none">
+      <div class="ch">
+        <span class="ct">📄 דוח באג</span>
+        <button class="btn bgh" style="font-size:12px" onclick="navigator.clipboard.writeText(window._bugT||'');alert('✅ הועתק!')">📋 העתק</button>
+      </div>
+      <div class="cb"><div class="result-box" id="bugOut"></div></div>
+    </div>
+  </div>
+
+  <!-- הגדרות -->
+  <div class="page" id="p-cfg">
+    <div class="ph"><div class="pt">הגדרות וחיבורים ⚙️</div><div class="pd">חבר את הכלים החיצוניים — הכנס API Key לכל שירות</div></div>
+    <div class="settings-grid">
+
+      <div class="card">
+        <div class="ch"><span class="ct"><div class="service-logo" style="background:#d97706">🤖</div>Anthropic API</span><div class="api-dot" id="dot-ant"></div></div>
+        <div class="cb">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:9px">מפתח API לסוכני ה-AI</p>
+          <div class="api-row">
+            <input class="api-inp" type="password" id="k-ant" placeholder="sk-ant-...">
+            <button class="btn bg" onclick="saveKey('ant','Anthropic')">שמור</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="ct"><div class="service-logo" style="background:#10a37f">💚</div>OpenAI API</span><div class="api-dot" id="dot-oai"></div></div>
+        <div class="cb">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:9px">ChatGPT — חלופה לסוכני AI</p>
+          <div class="api-row">
+            <input class="api-inp" type="password" id="k-oai" placeholder="sk-...">
+            <button class="btn bg" onclick="saveKey('oai','OpenAI')">שמור</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="ct"><div class="service-logo" style="background:var(--ind600)">📗</div>HelpJuice API</span><div class="api-dot" id="dot-hj"></div></div>
+        <div class="cb">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:9px">לסינכרון מאמרים ופרסום</p>
+          <div class="api-row">
+            <input class="api-inp" type="password" id="k-hj" placeholder="HelpJuice API Key...">
+            <button class="btn bg" onclick="saveKey('hj','HelpJuice')">שמור</button>
+            <button class="btn bgh" onclick="disconnectHJ()">התנתק</button>
+          </div>
+          <div class="api-row" style="margin-top:8px">
+            <input class="api-inp" type="text" id="hj-domain-inp" placeholder="yourcompany.helpjuice.com">
+            <button class="btn bgh" onclick="saveHJDomain()">שמור דומיין</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="ct"><div class="service-logo" style="background:#7c3aed">✅</div>ClickUp API</span><div class="api-dot" id="dot-cu"></div></div>
+        <div class="cb">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:9px">לניהול יוזר סטורי וכרטיסי באג</p>
+          <div class="api-row">
+            <input class="api-inp" type="password" id="k-cu" placeholder="ClickUp API Key...">
+            <button class="btn bg" onclick="saveKey('cu','ClickUp')">שמור</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="ct"><div class="service-logo" style="background:#4a154b">💬</div>Slack API</span><div class="api-dot" id="dot-sl"></div></div>
+        <div class="cb">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:9px">לשליחת התראות וסיכומים</p>
+          <div class="api-row">
+            <input class="api-inp" type="password" id="k-sl" placeholder="xoxb-...">
+            <button class="btn bg" onclick="saveKey('sl','Slack')">שמור</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="ct"><div class="service-logo" style="background:#1a73e8">📁</div>Google Drive API</span><div class="api-dot" id="dot-gd"></div></div>
+        <div class="cb">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:9px">לייצוא וגיבוי מסמכים</p>
+          <div class="api-row">
+            <input class="api-inp" type="password" id="k-gd" placeholder="Google API Key...">
+            <button class="btn bg" onclick="saveKey('gd','Google Drive')">שמור</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ch"><span class="ct"><div class="service-logo" style="background:#e44d26">📋</div>Zoho Desk API</span><div class="api-dot" id="dot-zh"></div></div>
+        <div class="cb">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:9px">לניהול כרטיסי תמיכה</p>
+          <div class="api-row">
+            <input class="api-inp" type="password" id="k-zh" placeholder="Zoho API Key...">
+            <button class="btn bg" onclick="saveKey('zh','Zoho Desk')">שמור</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<script>
+const SRV = 'http://localhost:3000';
+
+const pgCfg = {
+  kb:  ['מאגר ידע','ניהול מסמכים לאימון הסוכנים',true],
+  rep: ['סוכן נציגים','שאלות ותשובות לנציגי תמיכה',false],
+  cli: ['סוכן לקוחות','שאלות ותשובות לרואי חשבון',false],
+  art: ['יצירת מאמר','יצירת HTML לHelpJuice',false],
+  us:  ['יוזר סטורי','יצירת יוזר סטורי מסודר',false],
+  bug: ['דיווח באג','יצירת דוח באג מסודר',false],
+  cfg: ['הגדרות וחיבורים','חיבור כלים חיצוניים',false],
+};
+
+const docsState = { all: [], page: 1, pageSize: 8 };
+
+function go(id, btn) {
+  document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.getElementById('p-' + id).classList.add('on');
+  const [t, s, showBtn] = pgCfg[id];
+  document.getElementById('tbT').textContent = t;
+  document.getElementById('tbS').textContent = s;
+  document.getElementById('tbBtn').style.display = showBtn ? '' : 'none';
+  if (id === 'kb' || id === 'rep' || id === 'cli') loadDocs();
+}
+
+// ===== מאגר ידע =====
+async function loadDocs() {
+  try {
+    const r = await fetch(SRV + '/files');
+    const d = await r.json();
+    renderDocs(d.files || []);
+  } catch(e) {
+    document.getElementById('dList').innerHTML = '<div class="empty"><div class="empty-i">⚠️</div>לא ניתן להתחבר לשרת</div>';
+  }
+}
+
+function renderDocs(files) {
+  docsState.all = Array.isArray(files) ? files : [];
+  const n = files.length;
+  document.getElementById('s1').textContent = n;
+  document.getElementById('kbN').textContent = n;
+  document.getElementById('dCount').textContent = n + ' מסמכים';
+  ['rep-dc','cli-dc'].forEach(id => { const el = document.getElementById(id); if(el) el.textContent = n; });
+  const list = document.getElementById('dList');
+  const pager = document.getElementById('dPager');
+  if (n === 0) {
+    list.innerHTML = '<div class="empty"><div class="empty-i">📭</div>אין מסמכים עדיין — העלה את הראשון!</div>';
+    if (pager) pager.innerHTML = '';
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(n / docsState.pageSize));
+  docsState.page = Math.min(Math.max(1, docsState.page), totalPages);
+  const start = (docsState.page - 1) * docsState.pageSize;
+  const pageFiles = docsState.all.slice(start, start + docsState.pageSize);
+
+  list.innerHTML = pageFiles.map(f => `
+    <div class="di">
+      <div class="dd ${f.source==='hj'?'ddi':'ddg'}"></div>
+      <div style="flex:1"><div class="dname">${f.name}</div><div class="dmeta">${f.source==='hj'?'HelpJuice · ':'הועלה ידנית · '}${new Date(f.date).toLocaleDateString('he-IL')}</div></div>
+      <span class="dbadge ${f.source==='hj'?'dbi':'dbg'}">${f.source==='hj'?'HelpJuice':'ידני'}</span>
+      ${f.source!=='hj'?`<button class="btn-del" onclick="delDoc('${f.filename}','${f.name}')">🗑️</button>`:''}
+    </div>`).join('');
+
+  renderDocsPager(totalPages);
+}
+
+function renderDocsPager(totalPages) {
+  const pager = document.getElementById('dPager');
+  if (!pager) return;
+  if (totalPages <= 1) { pager.innerHTML = ''; return; }
+
+  let html = `<button class="pg-btn" ${docsState.page===1?'disabled':''} onclick="setDocsPage(${docsState.page - 1})">הקודם</button>`;
+  for (let p = 1; p <= totalPages; p++) {
+    html += `<button class="pg-btn ${p===docsState.page?'on':''}" onclick="setDocsPage(${p})">${p}</button>`;
+  }
+  html += `<button class="pg-btn" ${docsState.page===totalPages?'disabled':''} onclick="setDocsPage(${docsState.page + 1})">הבא</button>`;
+  pager.innerHTML = html;
+}
+
+function setDocsPage(page) {
+  const totalPages = Math.max(1, Math.ceil(docsState.all.length / docsState.pageSize));
+  docsState.page = Math.min(Math.max(1, page), totalPages);
+  renderDocs(docsState.all);
+}
+
+async function uploadFiles(files) {
+  const picked = Array.from(files || []);
+  if (!picked.length) {
+    alert('לא זוהו קבצים בגרירה');
+    return;
+  }
+
+  const allowedExt = ['pdf', 'doc', 'docx', 'txt', 'html', 'htm'];
+  const validFiles = picked.filter((f) => {
+    const ext = (f.name.split('.').pop() || '').toLowerCase();
+    return allowedExt.includes(ext);
+  });
+
+  if (!validFiles.length) {
+    alert('נתמכים קבצים מסוג: PDF, DOC, DOCX, TXT, HTML');
+    return;
+  }
+
+  for (const f of validFiles) {
+    const tmp = addTmp(f.name);
+    const form = new FormData();
+    form.append('file', f);
+    try {
+      const r = await fetch(SRV + '/upload', { method:'POST', body:form });
+      const d = await r.json();
+      tmp.remove();
+      if (d.error) alert(d.error);
+    } catch(e) { tmp.remove(); alert('שגיאה: ' + e.message); }
+  }
+  loadDocs();
+}
+
+function addTmp(name) {
+  const list = document.getElementById('dList');
+  if (list.querySelector('.empty')) list.innerHTML = '';
+  const d = document.createElement('div');
+  d.className = 'di';
+  d.innerHTML = `<div class="dd" style="background:var(--o400)"></div><div style="flex:1"><div class="dname">${name}</div><div class="dmeta">מועלה...</div></div><span class="dbadge" style="background:var(--o100);color:var(--o600)">בעיבוד</span>`;
+  list.prepend(d);
+  return d;
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  e.currentTarget.classList.remove('drag');
+  uploadFiles(e.dataTransfer?.files || []);
+}
+
+window.addEventListener('dragover', (e) => {
+  e.preventDefault();
+});
+
+window.addEventListener('drop', (e) => {
+  e.preventDefault();
+});
+
+async function savePasted() {
+  const txt = document.getElementById('ptxt').value.trim();
+  const nm = document.getElementById('pname').value.trim() || 'מסמך ידני';
+  if (!txt) { alert('אנא הדבק טקסט'); return; }
+  try {
+    const r = await fetch(SRV + '/save-text', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:txt, name:nm}) });
+    const d = await r.json();
+    if (d.success) { document.getElementById('ptxt').value = ''; document.getElementById('pname').value = ''; loadDocs(); }
+  } catch(e) { alert('שגיאה: ' + e.message); }
+}
+
+async function delDoc(fn, nm) {
+  if (!confirm('למחוק את "' + nm + '"?\n\nפעולה בלתי הפיכה.')) return;
+  try { await fetch(SRV + '/files/' + encodeURIComponent(fn), {method:'DELETE'}); loadDocs(); }
+  catch(e) { alert('שגיאה במחיקה'); }
+}
+
+function getHJDomain(forceAsk) {
+  const el = document.getElementById('hjDomain');
+  const inp = document.getElementById('hj-domain-inp');
+  let domain = normalizeHJDomain((inp && inp.value) || localStorage.getItem('hjDomain') || '');
+  if (inp && domain) inp.value = domain;
+  if (!domain && forceAsk) {
+    const input = prompt('הכנס דומיין HelpJuice (לדוגמה: yourcompany.helpjuice.com)');
+    if (input) {
+      domain = normalizeHJDomain(input);
+      if (domain) {
+        localStorage.setItem('hjDomain', domain);
+        if (inp) inp.value = domain;
+      }
+    }
+  }
+  if (el) el.textContent = domain || 'לא מוגדר — הגדר API בהגדרות';
+  return domain;
+}
+
+function normalizeHJDomain(value) {
+  return (value || '').trim().replace(/^https?:\/\//i, '').replace(/\/$/, '').split('/')[0];
+}
+
+function saveHJDomain() {
+  const inp = document.getElementById('hj-domain-inp');
+  if (!inp) return;
+  const domain = normalizeHJDomain(inp.value);
+  if (!domain) {
+    alert('אנא הכניסי דומיין HelpJuice תקין');
+    return;
+  }
+  localStorage.setItem('hjDomain', domain);
+  inp.value = domain;
+  const el = document.getElementById('hjDomain');
+  if (el) el.textContent = domain;
+  alert('✅ דומיין HelpJuice נשמר');
+}
+
+function loadHJDomainInput() {
+  const domain = normalizeHJDomain(localStorage.getItem('hjDomain') || '');
+  const inp = document.getElementById('hj-domain-inp');
+  if (inp && domain) inp.value = domain;
+  const el = document.getElementById('hjDomain');
+  if (el) el.textContent = domain || 'לא מוגדר — הגדר API בהגדרות';
+}
+
+async function syncHJ() {
+  const key = window._keys?.hj;
+  if (!key) { alert('יש להגדיר HelpJuice API Key בהגדרות'); go('cfg', document.querySelector('.nb[onclick*="cfg"]')); return; }
+
+  const domain = getHJDomain(true);
+  if (!domain) { alert('יש להגדיר דומיין HelpJuice לפני סנכרון'); return; }
+
+  const btn = document.getElementById('btnSync');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> מסנכרן...';
+  try {
+    const r = await fetch(SRV + '/helpjuice/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain })
+    });
+    const d = await r.json();
+    if (!r.ok || !d.success) {
+      const summary = d?.details?.summary ? ' | ' + d.details.summary : '';
+      const hint = d?.hint ? ' | ' + d.hint : '';
+      const firstStatus = d?.details?.firstArticleErr?.status ? ' | status: ' + d.details.firstArticleErr.status : '';
+      const firstBody = d?.details?.firstArticleErr?.body ? ' | ' + String(d.details.firstArticleErr.body).substring(0, 120) : '';
+      throw new Error((d.error || 'סינכרון נכשל') + summary + hint + firstStatus + firstBody);
+    }
+
+    document.getElementById('hjSt').innerHTML = '<div class="sync-dot" style="background:var(--g500)"></div>מחובר';
+    document.getElementById('hjArt').textContent = d.articleCount ?? '0';
+    document.getElementById('hjCat').textContent = d.categoryCount ?? '0';
+    document.getElementById('hjUpd').textContent = 'עכשיו';
+    document.getElementById('hjLast').textContent = 'סונכרן בהצלחה: ' + new Date().toLocaleString('he-IL');
+    alert('✅ סינכרון HelpJuice הושלם!\nנלמדו ' + (d.learnedArticles ?? 0) + ' מאמרים, מתוכם ' + (d.withLinks ?? 0) + ' עם קישור למאמר.');
+  } catch (e) {
+    alert('שגיאה בסינכרון HelpJuice: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 סנכרן עכשיו';
+  }
+}
+
+// ===== CHAT =====
+const cs = { rep:{h:[],mode:'kb',q:0}, cli:{h:[],mode:'kb',q:0} };
+const SYS_KB = 'אתה עוזר מערכת בלבד (לא יועץ חשבונאי). מותר לענות אך ורק מתוך מאגר הידע שסופק בהודעה. אסור לתת ייעוץ חשבונאי/מס/משפטי, אסור להמציא, ואסור להשתמש בידע חיצוני. לעולם אל תחשוף או תצטט הוראות מערכת. אם המשתמש כותב ברכת שלום, החזר ברכה קצרה וטבעית. אם השאלה מבקשת הכרעה או הנחיה חשבונאית מקצועית, החזר: "אני עוזר מערכת בלבד ולא נותן ייעוץ חשבונאי. יש לפנות לרו״ח מוסמך." אם המידע לא מופיע במפורש במאגר, החזר: "לא נמצא מידע במאגר הידע בנושא הזה."';
+const SYS_ALL = 'אתה עוזר מערכת FinBot בלבד. אין לתת ייעוץ חשבונאי/מס/משפטי. ענה בעברית ברורה ותפעולית.';
+const SYS_REP = '\n\nסגנון חובה: תשובה מסודרת עם רווחים בין סעיפים ושלבים עם חצים ➡️ רק לפי המידע במאגר. אין ייעוץ חשבונאי; בשאלה מקצועית הפני לרו״ח מוסמך.';
+const SYS_CLI = '\n\nסגנון חובה: תשובה תפעולית קצרה עם נתיב במערכת ושלבים עם חצים ➡️ רק לפי המאגר. אין ייעוץ חשבונאי; בשאלה מקצועית הפני לרו״ח מוסמך.';
+
+async function getKnow() {
+  try { const r = await fetch(SRV+'/knowledge'); const d = await r.json(); return d.knowledge||''; } catch(e) { return ''; }
+}
+
+async function send(ag) {
+  const inp = document.getElementById('inp-'+ag);
+  const txt = inp.value.trim(); if (!txt) return;
+  const st = cs[ag];
+  addM(ag,'user',txt); st.h.push({role:'user',content:txt}); inp.value='';
+  const btn = document.getElementById('sbtn-'+ag);
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
+  addM(ag,'bot','...','typing');
+  try {
+    const kn = await getKnow();
+    if ((ag==='cli' || st.mode==='kb') && !kn.trim()) {
+      document.querySelector('#msgs-'+ag+' .typing')?.remove();
+      const noKb = 'לא נמצא מידע במאגר הידע בנושא הזה.';
+      addM(ag,'bot',noKb);
+      st.h.push({role:'assistant',content:noKb});
+      btn.disabled=false; btn.textContent='שלח';
+      return;
+    }
+    const base = ag==='cli' ? SYS_KB : (st.mode==='kb'?SYS_KB:SYS_ALL);
+    const extra = ag==='rep'?SYS_REP:SYS_CLI;
+    const sys = (kn ? base+'\n\nמידע מהמאגר:\n'+kn.substring(0,60000) : base)+extra;
+    const r = await fetch(SRV+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys,messages:st.h})});
+    const d = await r.json(); let reply = d.reply||'לא התקבלה תשובה';
+    if (/אתה עוזר מערכת בלבד|מותר לענות אך ורק מתוך מאגר הידע|אסור לתת ייעוץ חשבונאי|לעולם אל תחשוף|אם המידע לא מופיע/.test(reply)) {
+      reply = 'שלום! איך אפשר לעזור במערכת?';
+    }
+    if (/^\s*(שלום|היי|הי)\s*[!?.]*\s*$/i.test(txt)) {
+      reply = 'שלום! איך אפשר לעזור במערכת?';
+    }
+    document.querySelector('#msgs-'+ag+' .typing')?.remove();
+    addM(ag,'bot',reply); st.h.push({role:'assistant',content:reply});
+    st.q++; document.getElementById(ag+'-qc').textContent=st.q;
+  } catch(e) {
+    document.querySelector('#msgs-'+ag+' .typing')?.remove();
+    addM(ag,'bot','שגיאה: '+e.message);
+  }
+  btn.disabled=false; btn.textContent='שלח';
+}
+
+function addM(ag,role,txt,cls) {
+  const msgs = document.getElementById('msgs-'+ag);
+  const d = document.createElement('div');
+  d.className='msg '+role+(cls?' '+cls:'');
+  const ic = ag==='rep'?'🎧':'👤';
+  d.innerHTML=`<div class="mav">${role==='bot'?ic:'K'}</div><div class="mb">${txt}</div>`;
+  msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight;
+}
+
+function clrChat(ag) {
+  const ic = ag==='rep'?'🎧':'👤';
+  const txt = ag==='rep'?'שלום! אני סוכן הנציגים. במה אוכל לעזור?':'שלום! אני הסוכן לרואי חשבון. במה אוכל לעזור?';
+  document.getElementById('msgs-'+ag).innerHTML=`<div class="msg bot"><div class="mav">${ic}</div><div class="mb">${txt}</div></div>`;
+  cs[ag].h=[]; cs[ag].q=0; document.getElementById(ag+'-qc').textContent=0;
+}
+
+function setMode(el,ag,mode) {
+  el.closest('.ic-body').querySelectorAll('.mode-opt').forEach(o=>o.classList.remove('on'));
+  el.classList.add('on'); cs[ag].mode=mode;
+}
+
+// ===== יצירת מאמר =====
+const HJ_PROMPT=`You are an expert at converting knowledge base articles into clean HelpJuice HTML.
+About FinBot: Israeli digital accounting software for accounting firms. Double-entry bookkeeping, automated reporting, AI invoice scanning 97% accuracy.
+Use these HelpJuice patterns:
+Summary: <div style="margin-bottom:40px"><hr><div style="background:white;border-radius:10px;border-right:5px solid var(--accent,#f97316);box-shadow:0 2px 5px rgba(0,0,0,.05);margin-bottom:25px;padding:20px"><p style="font-size:18px;line-height:1.6;margin:0"><strong style="color:#3A3F41">[Title]</strong></p><p style="font-size:18px;line-height:1.6;margin:0">[Summary]</p></div></div>
+Section header: <div style="text-align:center;width:100%"><h2 data-toc="true"><span style="color:hsl(196,4%,52%)"><strong>[Bold] </strong>[Rest]</span></h2><div style="background:var(--accent,#f97316);height:3px;margin:10px auto 20px;width:150px">&nbsp;</div></div>
+Accordion: <div class="helpjuice-accordion" data-controller="editor--toggle-element"><h2 class="helpjuice-accordion-title" data-toc="true">[Title]</h2><div class="helpjuice-accordion-body active" data-editor--toggle-element-target="body"><p style="font-size:18px">[Content]</p></div><div class="helpjuice-accordion-toggle">&nbsp;</div><div class="helpjuice-accordion-delete">&nbsp;</div></div>
+Output ONLY HTML. No explanations. Inline styles only.`;
+
+async function genArt() {
+  const txt = document.getElementById('artIn').value.trim(); if (!txt) { alert('אנא הדבק תוכן'); return; }
+  const btn = document.getElementById('btnArt'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> יוצר מאמר...';
+  try {
+    const r = await fetch(SRV+'/generate-article',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:txt,filename:'מאמר'})});
+    const d = await r.json();
+    if (d.html) { document.getElementById('artPrev').innerHTML=d.html; document.getElementById('artCard').style.display=''; window._artH=d.html; }
+    else alert('שגיאה: '+(d.error||'לא התקבל HTML'));
+  } catch(e) { alert('שגיאה: '+e.message); }
+  btn.disabled=false; btn.innerHTML='✦ צור מאמר HelpJuice';
+}
+
+function cpArt() { navigator.clipboard.writeText(window._artH||''); alert('✅ HTML הועתק!'); }
+async function pubHJ() {
+  const key = window._keys?.hj;
+  if (!key) { alert('יש להגדיר HelpJuice API Key בהגדרות'); go('cfg', document.querySelector('.nb[onclick*="cfg"]')); return; }
+
+  const html = window._artH || document.getElementById('artPrev').innerHTML.trim();
+  if (!html) { alert('אין מאמר לפרסום'); return; }
+
+  const domain = getHJDomain(true);
+  if (!domain) { alert('יש להגדיר דומיין HelpJuice לפני פרסום'); return; }
+
+  const title = prompt('כותרת המאמר ב-HelpJuice:', 'מאמר חדש מ-FinBot') || 'מאמר חדש מ-FinBot';
+
+  try {
+    const r = await fetch(SRV + '/helpjuice/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain, title, html, publishMode: 'pending' })
+    });
+    const d = await r.json();
+    if (!r.ok || !d.success) throw new Error(d.error || 'פרסום נכשל');
+    await loadDocs();
+    const learnedMsg = d.learned ? ' וגם נוסף ללמידת הסוכן' : '';
+    alert('✅ המאמר נשלח ל-HelpJuice כדראפט/ממתין לאישור' + learnedMsg);
+  } catch (e) {
+    alert('שגיאה בפרסום ל-HelpJuice: ' + e.message);
+  }
+}
+
+// ===== יוזר סטורי =====
+const US_SYS=`אתה מומחה לכתיבת User Stories עבור FinBot. כתוב בפורמט:
+
+**כותרת:** [שם הפיצ'ר]
+
+**As a** [סוג משתמש]
+**I want** [מה הוא רוצה]
+**So that** [הערך שהוא מקבל]
+
+**קריטריוני קבלה:**
+- [ ] [קריטריון 1]
+- [ ] [קריטריון 2]
+- [ ] [קריטריון 3]
+
+**הגדרת סיום (DoD):**
+- [ ] [תנאי 1]
+- [ ] [תנאי 2]
+
+**Edge Cases:**
+- [מקרה קצה 1]
+- [מקרה קצה 2]
+
+**הערות טכניות:** [הערות]
+
+ענה בעברית. מדויק ומקצועי.`;
+
+async function genUS() {
+  const txt = document.getElementById('usIn').value.trim(); if (!txt) { alert('אנא תאר את הפיצ\'ר'); return; }
+  const btn=document.getElementById('btnUS'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> יוצר...';
+  try {
+    const r=await fetch(SRV+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:US_SYS,messages:[{role:'user',content:txt}]})});
+    const d=await r.json(); window._usT=d.reply||'';
+    document.getElementById('usOut').textContent=window._usT;
+    document.getElementById('usCard').style.display='';
+  } catch(e) { alert('שגיאה: '+e.message); }
+  btn.disabled=false; btn.innerHTML='📋 צור יוזר סטורי';
+}
+
+// ===== באג =====
+const BUG_SYS=`אתה מומחה לכתיבת דוחות באג עבור FinBot. כתוב בפורמט:
+
+**כותרת הבאג:** [כותרת קצרה]
+
+**תיאור:** [תיאור]
+
+**שלבי שחזור:**
+1. [שלב 1]
+2. [שלב 2]
+
+**התנהגות נוכחית:** [מה קורה]
+**התנהגות צפויה:** [מה היה צריך לקרות]
+**חומרה:** [קריטי / גבוה / בינוני / נמוך]
+**סביבה:** [דפדפן, מערכת הפעלה, גרסה]
+**הערות:** [מידע נוסף]
+
+ענה בעברית. מדויק ומקצועי.`;
+
+async function genBug() {
+  const txt=document.getElementById('bugIn').value.trim(); if(!txt){alert('אנא תאר את הבאג');return;}
+  const btn=document.getElementById('btnBug'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> יוצר...';
+  try {
+    const r=await fetch(SRV+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:BUG_SYS,messages:[{role:'user',content:txt}]})});
+    const d=await r.json(); window._bugT=d.reply||'';
+    document.getElementById('bugOut').textContent=window._bugT;
+    document.getElementById('bugCard').style.display='';
+  } catch(e){alert('שגיאה: '+e.message);}
+  btn.disabled=false; btn.innerHTML='🐛 צור דוח באג';
+}
+
+// ===== הגדרות =====
+window._keys={};
+async function loadKeyStatus() {
+  try {
+    const r = await fetch(SRV + '/api/keys/status');
+    const raw = await r.text();
+    let d;
+    try { d = JSON.parse(raw); }
+    catch { return; }
+    if (!d.success || !d.status) return;
+    Object.entries(d.status).forEach(([id, hasValue]) => {
+      if (hasValue) {
+        window._keys[id] = '__saved__';
+        const dot = document.getElementById('dot-' + id);
+        if (dot) dot.className = 'api-dot on';
+      }
+    });
+  } catch(e) {
+    // Keep UI usable even if status endpoint is unavailable.
+  }
+}
+
+async function saveKey(id, name) {
+  const val=document.getElementById('k-'+id).value.trim();
+  if(!val){alert('אנא הכנס מפתח API');return;}
+  try {
+    const r = await fetch(SRV + '/api/keys', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ id, value: val })
+    });
+    const raw = await r.text();
+    let d;
+    try { d = JSON.parse(raw); }
+    catch {
+      throw new Error('השרת החזיר תגובה לא תקינה. בצעי הפעלה מחדש לשרת.');
+    }
+    if (!r.ok || !d.success) throw new Error(d.error || 'שמירה נכשלה');
+    window._keys[id]=val;
+    const dot=document.getElementById('dot-'+id);
+    if(dot){dot.className='api-dot on';}
+    alert('✅ מפתח '+name+' נשמר בשרת!');
+  } catch(e) {
+    alert('שגיאה בשמירת מפתח: ' + e.message);
+  }
+}
+
+async function disconnectHJ() {
+  if (!confirm('לנתק את HelpJuice ולמחוק את ה-API key השמור בשרת?')) return;
+  try {
+    const r = await fetch(SRV + '/api/keys/hj', { method: 'DELETE' });
+    const d = await r.json();
+    if (!r.ok || !d.success) throw new Error(d.error || 'ניתוק נכשל');
+    delete window._keys.hj;
+    const dot = document.getElementById('dot-hj');
+    if (dot) dot.className = 'api-dot';
+    const hjStatus = document.getElementById('hjSt');
+    if (hjStatus) hjStatus.innerHTML = '<div class="sync-dot" style="background:var(--gr300)"></div>לא מחובר';
+    const keyInput = document.getElementById('k-hj');
+    if (keyInput) keyInput.value = '';
+    alert('✅ נותקת מ-HelpJuice');
+  } catch (e) {
+    alert('שגיאה בניתוק HelpJuice: ' + e.message);
+  }
+}
+
+loadDocs();
+loadKeyStatus();
+loadHJDomainInput();
+</script>
+</body>
+</html>
