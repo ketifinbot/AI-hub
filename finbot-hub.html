@@ -206,6 +206,14 @@ body{font-family:'Noto Sans Hebrew',sans-serif;background:var(--gr50);color:var(
 @keyframes rot{to{transform:rotate(360deg)}}
 .empty{text-align:center;padding:32px;color:var(--gr400);font-size:13px}
 .empty-i{font-size:32px;margin-bottom:8px}
+
+/* AUTH */
+.auth-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
+.auth-card{width:min(420px,100%);background:var(--white);border:1px solid var(--gr200);border-radius:var(--r);box-shadow:0 10px 30px rgba(2,6,23,.2);padding:18px}
+.auth-title{font-family:'Playfair Display',serif;font-size:23px;color:var(--gr800);margin-bottom:4px}
+.auth-sub{font-size:12.5px;color:var(--gr500);margin-bottom:12px}
+.auth-err{display:none;font-size:12px;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:8px;padding:7px 9px;margin-bottom:9px}
+.auth-demo{font-size:11.5px;color:var(--gr400);margin-top:8px;line-height:1.6}
 </style>
 </head>
 <body>
@@ -217,23 +225,24 @@ body{font-family:'Noto Sans Hebrew',sans-serif;background:var(--gr50);color:var(
   </div>
   <nav class="sb-nav">
     <div class="nav-lbl">מאגר ידע</div>
-    <button class="nb on" onclick="go('kb',this)"><span class="ni">📚</span>מאגר ידע<span class="nbadge" id="kbN">0</span></button>
+    <button class="nb on" id="nav-kb" onclick="go('kb',this)"><span class="ni">📚</span>מאגר ידע<span class="nbadge" id="kbN">0</span></button>
     <button class="nb" onclick="go('rep',this)"><span class="ni">🎧</span>סוכן נציגים</button>
     <button class="nb" onclick="go('cli',this)"><span class="ni">👤</span>סוכן לקוחות</button>
     <div class="ndiv"></div>
     <div class="nav-lbl">יצירת תוכן</div>
     <button class="nb" onclick="go('art',this)"><span class="ni">✍️</span>יצירת מאמר</button>
-    <button class="nb" onclick="go('us',this)"><span class="ni">📋</span>יוזר סטורי</button>
-    <button class="nb" onclick="go('bug',this)"><span class="ni">🐛</span>דיווח באג</button>
+    <button class="nb" id="nav-us" onclick="go('us',this)"><span class="ni">📋</span>יוזר סטורי</button>
+    <button class="nb" id="nav-bug" onclick="go('bug',this)"><span class="ni">🐛</span>דיווח באג</button>
     <div class="ndiv"></div>
     <div class="nav-lbl">מערכת</div>
     <button class="nb" onclick="go('cfg',this)"><span class="ni">⚙️</span>הגדרות וחיבורים</button>
   </nav>
   <div class="sb-foot">
     <div class="urow">
-      <div class="uav">K</div>
-      <div><div class="uname">kati@finbot.co.il</div><div class="urole">Admin</div></div>
+      <div class="uav" id="uAv">?</div>
+      <div><div class="uname" id="uName">לא מחובר</div><div class="urole" id="uRole">—</div></div>
     </div>
+    <button class="btn bgh bfull" style="margin-top:8px;font-size:12px" onclick="logout()">התנתקות</button>
     <div class="privacy"><a>Privacy Policy</a><a>Terms of Service</a></div>
   </div>
 </aside>
@@ -552,8 +561,26 @@ body{font-family:'Noto Sans Hebrew',sans-serif;background:var(--gr50);color:var(
 
 </main>
 
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <div class="auth-title">כניסה למערכת</div>
+    <div class="auth-sub">התחברי כ-Admin או כ-User רגיל</div>
+    <div class="auth-err" id="authErr">אימייל או סיסמה לא נכונים</div>
+    <input class="inp inp-ltr" id="authEmail" placeholder="email" style="margin-bottom:8px">
+    <input class="inp inp-ltr" id="authPassword" type="password" placeholder="password" style="margin-bottom:10px" onkeydown="if(event.key==='Enter') login()">
+    <button class="btn bg bfull" onclick="login()">התחברי</button>
+    <div class="auth-demo">גישה מלאה (Admin): <strong>kati@finbot.co.il</strong><br>סיסמה: <strong>finbot123</strong><br><br>גישה רגילה (User): <strong>user@finbot.co.il</strong><br>סיסמה: <strong>finbot123</strong></div>
+  </div>
+</div>
+
 <script>
 const SRV = 'http://localhost:3000';
+const USERS = [
+  { email: 'kati@finbot.co.il', password: 'finbot123', role: 'admin', name: 'Kati' },
+  { email: 'user@finbot.co.il', password: 'finbot123', role: 'user', name: 'Team User' }
+];
+const RESTRICTED_PAGES = new Set(['us', 'bug']);
+let currentUser = null;
 
 const pgCfg = {
   kb:  ['מאגר ידע','ניהול מסמכים לאימון הסוכנים',true],
@@ -568,8 +595,14 @@ const pgCfg = {
 const docsState = { all: [], page: 1, pageSize: 8 };
 
 function go(id, btn) {
+  if (RESTRICTED_PAGES.has(id) && (!currentUser || currentUser.role !== 'admin')) {
+    alert('העמוד הזה זמין רק לאדמין.');
+    id = 'kb';
+    btn = document.getElementById('nav-kb');
+  }
+
   document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
+  if (btn) btn.classList.add('on');
   document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
   document.getElementById('p-' + id).classList.add('on');
   const [t, s, showBtn] = pgCfg[id];
@@ -577,6 +610,74 @@ function go(id, btn) {
   document.getElementById('tbS').textContent = s;
   document.getElementById('tbBtn').style.display = showBtn ? '' : 'none';
   if (id === 'kb' || id === 'rep' || id === 'cli') loadDocs();
+}
+
+function setCurrentUser(user) {
+  currentUser = user;
+  const nameEl = document.getElementById('uName');
+  const roleEl = document.getElementById('uRole');
+  const avEl = document.getElementById('uAv');
+  if (nameEl) nameEl.textContent = user.email;
+  if (roleEl) roleEl.textContent = user.role === 'admin' ? 'Admin' : 'User';
+  if (avEl) avEl.textContent = (user.name || user.email || '?').trim().charAt(0).toUpperCase();
+
+  const isAdmin = user.role === 'admin';
+  const navUS = document.getElementById('nav-us');
+  const navBug = document.getElementById('nav-bug');
+  if (navUS) navUS.style.display = isAdmin ? '' : 'none';
+  if (navBug) navBug.style.display = isAdmin ? '' : 'none';
+
+  if (!isAdmin) {
+    const usPage = document.getElementById('p-us');
+    const bugPage = document.getElementById('p-bug');
+    if ((usPage && usPage.classList.contains('on')) || (bugPage && bugPage.classList.contains('on'))) {
+      go('kb', document.getElementById('nav-kb'));
+    }
+  }
+}
+
+function login() {
+  const email = document.getElementById('authEmail').value.trim().toLowerCase();
+  const password = document.getElementById('authPassword').value;
+  const err = document.getElementById('authErr');
+  const user = USERS.find(u => u.email.toLowerCase() === email && u.password === password);
+  if (!user) {
+    if (err) err.style.display = 'block';
+    return;
+  }
+
+  if (err) err.style.display = 'none';
+  setCurrentUser(user);
+  localStorage.setItem('finbotUser', JSON.stringify({ email: user.email }));
+  document.getElementById('authOverlay').style.display = 'none';
+  loadDocs();
+  loadKeyStatus();
+  loadHJDomainInput();
+}
+
+function logout() {
+  currentUser = null;
+  localStorage.removeItem('finbotUser');
+  document.getElementById('authPassword').value = '';
+  document.getElementById('authOverlay').style.display = 'flex';
+}
+
+function initAuth() {
+  const raw = localStorage.getItem('finbotUser');
+  if (!raw) return;
+  try {
+    const saved = JSON.parse(raw);
+    const user = USERS.find(u => u.email === saved.email);
+    if (user) {
+      setCurrentUser(user);
+      document.getElementById('authOverlay').style.display = 'none';
+      loadDocs();
+      loadKeyStatus();
+      loadHJDomainInput();
+    }
+  } catch(e) {
+    localStorage.removeItem('finbotUser');
+  }
 }
 
 // ===== מאגר ידע =====
@@ -1054,9 +1155,7 @@ async function disconnectHJ() {
   }
 }
 
-loadDocs();
-loadKeyStatus();
-loadHJDomainInput();
+initAuth();
 </script>
 </body>
 </html>
