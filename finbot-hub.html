@@ -1525,6 +1525,8 @@ async function loadKeyStatus() {
         window._keys[id] = '__saved__';
         const dot = document.getElementById('dot-' + id);
         if (dot) dot.className = 'api-dot on';
+        const inp = document.getElementById('k-' + id);
+        if (inp) inp.placeholder = '●●●●●●●●●●●● (שמור ✅)';
       }
     });
   } catch(e) {
@@ -1551,6 +1553,8 @@ async function saveKey(id, name) {
     window._keys[id]=val;
     const dot=document.getElementById('dot-'+id);
     if(dot){dot.className='api-dot on';}
+    const inp=document.getElementById('k-'+id);
+    if(inp){inp.value='';inp.placeholder='●●●●●●●●●●●● (שמור ✅)';}
     alert('✅ מפתח '+name+' נשמר בשרת!');
   } catch(e) {
     alert('שגיאה בשמירת מפתח: ' + e.message);
@@ -1569,7 +1573,7 @@ async function disconnectHJ() {
     const hjStatus = document.getElementById('hjSt');
     if (hjStatus) hjStatus.innerHTML = '<div class="sync-dot" style="background:var(--gr300)"></div>לא מחובר';
     const keyInput = document.getElementById('k-hj');
-    if (keyInput) keyInput.value = '';
+    if (keyInput) { keyInput.value = ''; keyInput.placeholder = 'HelpJuice API Key...'; }
     alert('✅ נותקת מ-HelpJuice');
   } catch (e) {
     alert('שגיאה בניתוק HelpJuice: ' + e.message);
