@@ -424,8 +424,10 @@ body{font-family:'Noto Sans Hebrew',sans-serif;background:var(--gr50);color:var(
         <textarea class="ta" id="artIn" placeholder="הדבק כאן יוזר סטורי, תיאור מסך, הוראות..." style="min-height:180px"></textarea>
         <div style="display:flex;gap:9px;margin-top:11px">
           <button class="btn bg" onclick="genArt()" id="btnArt">✦ צור מאמר HelpJuice</button>
+          <button class="btn bo" onclick="runArticleFunnel()" id="btnFunnel">🧩 הפעל משפך 3 סוכנים</button>
           <button class="btn bgh" onclick="document.getElementById('artIn').value=''">נקה</button>
         </div>
+        <div id="funnelSt" style="display:none;margin-top:10px;background:var(--gr50);border:1px solid var(--gr200);border-radius:8px;padding:8px 10px;font-size:12.5px;color:var(--gr600)"></div>
       </div>
     </div>
     <div class="card" id="artCard" style="display:none">
@@ -652,6 +654,51 @@ body{font-family:'Noto Sans Hebrew',sans-serif;background:var(--gr50);color:var(
           </div>
         </div>
       </div>
+
+      <div class="ap-card">
+        <div class="ap-hdr" onclick="toggleAgentCfg(this)">
+          <span class="ap-title">1️⃣ סוכן ראשון — איסוף וטיוטת מאמר</span>
+          <span class="ap-arrow">❯</span>
+        </div>
+        <div class="ap-body">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:8px">מקבל מידע גולמי ומייצר טיוטת מאמר מסודרת.</p>
+          <textarea class="ap-ta" id="aptPipe1"></textarea>
+          <div class="ap-actions">
+            <button class="btn" onclick="resetAgentPrompt('pipe1')">↩ אפס לברירת מחדל</button>
+            <button class="btn bg" onclick="saveAgentPrompt('pipe1')">💾 שמור</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ap-card">
+        <div class="ap-hdr" onclick="toggleAgentCfg(this)">
+          <span class="ap-title">2️⃣ סוכן שני — המרה ל-HTML של HelpJuice</span>
+          <span class="ap-arrow">❯</span>
+        </div>
+        <div class="ap-body">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:8px">ממיר את הטיוטה לקוד HTML בפורמט HelpJuice.</p>
+          <textarea class="ap-ta" id="aptPipe2"></textarea>
+          <div class="ap-actions">
+            <button class="btn" onclick="resetAgentPrompt('pipe2')">↩ אפס לברירת מחדל</button>
+            <button class="btn bg" onclick="saveAgentPrompt('pipe2')">💾 שמור</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="ap-card">
+        <div class="ap-hdr" onclick="toggleAgentCfg(this)">
+          <span class="ap-title">3️⃣ סוכן שלישי — בקרת פרסום</span>
+          <span class="ap-arrow">❯</span>
+        </div>
+        <div class="ap-body">
+          <p style="font-size:12px;color:var(--gr400);margin-bottom:8px">מבצע בדיקה סופית לפני פרסום ומחזיר READY_TO_PUBLISH.</p>
+          <textarea class="ap-ta" id="aptPipe3"></textarea>
+          <div class="ap-actions">
+            <button class="btn" onclick="resetAgentPrompt('pipe3')">↩ אפס לברירת מחדל</button>
+            <button class="btn bg" onclick="saveAgentPrompt('pipe3')">💾 שמור</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -812,7 +859,7 @@ function resetAgentPrompt(id) {
 }
 
 function initAgentPromptUi() {
-  ['rep','cli','us','bug'].forEach(id => {
+  ['rep','cli','us','bug','pipe1','pipe2','pipe3'].forEach(id => {
     const taId = 'apt' + id.charAt(0).toUpperCase() + id.slice(1);
     const ta = document.getElementById(taId);
     if (ta) ta.value = getPrompt(id);
@@ -1207,6 +1254,45 @@ const DEF_PROMPTS = {
 **מידע נוסף:** [לוגים, תדירות הבעיה, מידע נוסף]
 
 ענה בעברית. מדויק ומובנה.`
+,
+
+  pipe1: `אתה סוכן #1 במשפך תוכן. המטרה שלך: לקבל מידע גולמי ולהפוך אותו למאמר מסודר בעברית.
+
+כללים:
+- אל תכתוב HTML
+- תשתמש רק במידע שהמשתמש נתן
+- אם חסר מידע, הוסף סעיף "מידע חסר להשלמה"
+
+פורמט חובה:
+כותרת: ...
+תקציר: ...
+קהל יעד: ...
+תוכן המאמר:
+1) ...
+2) ...
+3) ...
+שאלות נפוצות:
+- שאלה: ... תשובה: ...
+קריאה לפעולה: ...`,
+
+  pipe2: `אתה סוכן #2 במשפך. קבל טיוטת מאמר טקסטואלית והמר אותה ל-HTML תקין ל-HelpJuice.
+
+כללים:
+- החזר HTML בלבד
+- בלי markdown ובלי הסברים
+- השתמש בכותרות h2/h3, פסקאות, רשימות ובלוק סיכום בתחילת המאמר
+- שמור על RTL בתוכן בעברית
+- השתמש בתבנית אקורדיון של HelpJuice רק אם יש סעיף שאלות נפוצות
+- ודא שה-HTML נקי ומוכן לפרסום`,
+
+  pipe3: `אתה סוכן #3 במשפך הפרסום. תפקידך לוודא שהמאמר מוכן לפרסום ל-HelpJuice:
+- כותרת ברורה
+- מבנה קריא
+- אין טקסט placeholder
+- אין מידע חסר
+
+אם התוכן תקין, החזר רק: READY_TO_PUBLISH
+אם לא תקין, החזר רשימת תיקונים קצרה בעברית.`
 };
 
 function getPrompt(id) {
@@ -1315,32 +1401,102 @@ async function genArt() {
 }
 
 function cpArt() { navigator.clipboard.writeText(window._artH||''); alert('✅ HTML הועתק!'); }
-async function pubHJ() {
-  const key = window._keys?.hj;
-  if (!key) { alert('יש להגדיר HelpJuice API Key בהגדרות'); go('cfg', document.querySelector('.nb[onclick*="cfg"]')); return; }
 
-  const html = window._artH || document.getElementById('artPrev').innerHTML.trim();
-  if (!html) { alert('אין מאמר לפרסום'); return; }
+async function publishHJ(html, title) {
+  const key = window._keys?.hj;
+  if (!key) throw new Error('יש להגדיר HelpJuice API Key בהגדרות');
+  if (!html) throw new Error('אין מאמר לפרסום');
 
   const domain = getHJDomain(true);
-  if (!domain) { alert('יש להגדיר דומיין HelpJuice לפני פרסום'); return; }
+  if (!domain) throw new Error('יש להגדיר דומיין HelpJuice לפני פרסום');
 
+  const r = await fetch(SRV + '/helpjuice/publish', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ domain, title, html, publishMode: 'pending' })
+  });
+  const d = await r.json();
+  if (!r.ok || !d.success) throw new Error(d.error || 'פרסום נכשל');
+  await loadDocs();
+  return d;
+}
+
+async function pubHJ() {
+  const html = window._artH || document.getElementById('artPrev').innerHTML.trim();
   const title = prompt('כותרת המאמר ב-HelpJuice:', 'מאמר חדש מ-FinBot') || 'מאמר חדש מ-FinBot';
 
   try {
-    const r = await fetch(SRV + '/helpjuice/publish', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain, title, html, publishMode: 'pending' })
-    });
-    const d = await r.json();
-    if (!r.ok || !d.success) throw new Error(d.error || 'פרסום נכשל');
-    await loadDocs();
+    const d = await publishHJ(html, title);
     const learnedMsg = d.learned ? ' וגם נוסף ללמידת הסוכן' : '';
     alert('✅ המאמר נשלח ל-HelpJuice כדראפט/ממתין לאישור' + learnedMsg);
   } catch (e) {
+    if (/HelpJuice API Key/.test(e.message)) go('cfg', document.querySelector('.nb[onclick*="cfg"]'));
     alert('שגיאה בפרסום ל-HelpJuice: ' + e.message);
   }
+}
+
+function setFunnelStatus(lines, isError) {
+  const box = document.getElementById('funnelSt');
+  if (!box) return;
+  box.style.display = '';
+  box.style.borderColor = isError ? 'var(--rd500)' : 'var(--gr200)';
+  box.innerHTML = (Array.isArray(lines) ? lines : [String(lines)]).map(s => '• ' + s).join('<br>');
+}
+
+async function runArticleFunnel() {
+  const txt = document.getElementById('artIn').value.trim();
+  if (!txt) { alert('אנא הדבק תוכן'); return; }
+
+  const btn = document.getElementById('btnFunnel');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> מריץ משפך...';
+  setFunnelStatus(['סוכן 1 מתחיל לעבד מידע...'], false);
+
+  try {
+    const r1 = await fetch(SRV + '/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system: getPrompt('pipe1'), messages: [{ role: 'user', content: txt }] })
+    });
+    const d1 = await r1.json();
+    const draft = (d1.reply || '').trim();
+    if (!draft) throw new Error('סוכן 1 לא החזיר טיוטה');
+    setFunnelStatus(['סוכן 1 סיים טיוטת מאמר', 'סוכן 2 ממיר ל-HTML של HelpJuice...'], false);
+
+    const r2 = await fetch(SRV + '/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system: getPrompt('pipe2'), messages: [{ role: 'user', content: draft }] })
+    });
+    const d2 = await r2.json();
+    const html = (d2.reply || '').trim();
+    if (!html) throw new Error('סוכן 2 לא החזיר HTML');
+
+    window._artH = html;
+    document.getElementById('artPrev').innerHTML = html;
+    document.getElementById('artCard').style.display = '';
+    setFunnelStatus(['סוכן 1 סיים טיוטה', 'סוכן 2 סיים המרה ל-HTML', 'סוכן 3 מבצע בקרת פרסום...'], false);
+
+    const r3 = await fetch(SRV + '/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system: getPrompt('pipe3'), messages: [{ role: 'user', content: html }] })
+    });
+    const d3 = await r3.json();
+    const gate = (d3.reply || '').trim();
+    if (!/READY_TO_PUBLISH/i.test(gate)) {
+      throw new Error('סוכן 3 עצר פרסום: ' + (gate || 'נדרש תיקון לפני פרסום'));
+    }
+
+    setFunnelStatus(['סוכן 1 סיים טיוטה', 'סוכן 2 סיים HTML', 'סוכן 3 אישר פרסום', 'מפרסם ל-HelpJuice...'], false);
+    const autoTitle = 'מאמר אוטומטי - ' + new Date().toLocaleDateString('he-IL');
+    await publishHJ(html, autoTitle);
+    setFunnelStatus(['המשפך הושלם בהצלחה', 'המאמר פורסם כטיוטה ב-HelpJuice'], false);
+    alert('✅ משפך 3 סוכנים הסתיים והמאמר פורסם ל-HelpJuice');
+  } catch (e) {
+    setFunnelStatus(['המשפך נעצר', e.message], true);
+    alert('שגיאה במשפך הסוכנים: ' + e.message);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🧩 הפעל משפך 3 סוכנים';
 }
 
 // ===== יוזר סטורי =====
