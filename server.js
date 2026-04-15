@@ -370,13 +370,21 @@ function parseSelectedCategoryIds(raw) {
   return Array.from(unique);
 }
 
-function clearKnowledgeDirectories() {
-  [uploadsDir, textsDir].forEach((dir) => {
-    const files = fs.readdirSync(dir);
-    files.forEach((fileName) => {
-      const filePath = path.join(dir, fileName);
-      if (fs.statSync(filePath).isFile()) fs.unlinkSync(filePath);
-    });
+function clearHelpjuiceSyncedFiles() {
+  const syncedPrefix = 'hj-sync-';
+
+  const uploadFiles = fs.readdirSync(uploadsDir);
+  uploadFiles.forEach((fileName) => {
+    if (!fileName.startsWith(syncedPrefix)) return;
+    const filePath = path.join(uploadsDir, fileName);
+    if (fs.statSync(filePath).isFile()) fs.unlinkSync(filePath);
+  });
+
+  const textFiles = fs.readdirSync(textsDir);
+  textFiles.forEach((fileName) => {
+    if (!fileName.startsWith(syncedPrefix)) return;
+    const filePath = path.join(textsDir, fileName);
+    if (fs.statSync(filePath).isFile()) fs.unlinkSync(filePath);
   });
 }
 
@@ -608,9 +616,9 @@ app.post('/helpjuice/sync', async (req, res) => {
     const articleCount = articles.length;
     const categoryCount = categories.length || categoriesJson.total || categoriesJson.count || 0;
 
-    // Remove previous local knowledge so agents only use the latest selected folders.
+    // Remove only previous HelpJuice sync artifacts and keep manual knowledge intact.
     if (clearExisting) {
-      clearKnowledgeDirectories();
+      clearHelpjuiceSyncedFiles();
     }
 
     // Build local knowledge from synced HelpJuice routes + content.
