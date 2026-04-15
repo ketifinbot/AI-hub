@@ -4,12 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FinBot AI Hub</title>
-<script>
-// Always serve from the Node.js backend so API keys and all features work correctly
-if (window.location.protocol !== 'http:' || (window.location.hostname === 'localhost' && window.location.port !== '3000')) {
-  window.location.replace('http://localhost:3000/finbot-hub.html');
-}
-</script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@300;400;500;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -601,7 +595,7 @@ body{font-family:'Noto Sans Hebrew',sans-serif;background:var(--gr50);color:var(
 </main>
 
 <script>
-const SRV = 'http://localhost:3000';
+const SRV = window.location.origin;
 
 const pgCfg = {
   kb:  ['מאגר ידע','ניהול מסמכים לאימון הסוכנים',true],

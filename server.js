@@ -7,11 +7,15 @@ const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
+
+app.get('/health', (req, res) => {
+  res.json({ success: true, status: 'ok' });
+});
 
 const dirs = [path.join(__dirname, 'uploads'), path.join(__dirname, 'texts')];
 dirs.forEach(dir => { if (!fs.existsSync(dir)) fs.mkdirSync(dir); });
