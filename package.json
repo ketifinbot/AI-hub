@@ -1,0 +1,21 @@
+{
+  "name": "finbot-hub",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "mammoth": "^1.12.0",
+    "multer": "^2.1.1",
+    "node-fetch": "^3.3.2",
+    "pdf-parse": "^2.4.5"
+  }
+}
