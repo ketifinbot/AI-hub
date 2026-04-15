@@ -384,6 +384,11 @@ function collectArticleCategoryIds(article) {
   const ids = [];
   const pushValue = (v) => {
     if (v === null || v === undefined || v === '') return;
+    if (typeof v === 'object') {
+      const nestedId = v.id ?? v.category_id ?? v.categoryId ?? v.folder_id ?? v.folderId ?? '';
+      if (nestedId !== null && nestedId !== undefined && nestedId !== '') ids.push(String(nestedId));
+      return;
+    }
     ids.push(String(v));
   };
 
@@ -391,10 +396,27 @@ function collectArticleCategoryIds(article) {
   pushValue(article.categoryId);
   pushValue(article.folder_id);
   pushValue(article.folderId);
+  pushValue(article.category);
+  pushValue(article.folder);
 
   if (Array.isArray(article.category_ids)) article.category_ids.forEach(pushValue);
   if (Array.isArray(article.categoryIds)) article.categoryIds.forEach(pushValue);
   if (Array.isArray(article.folder_ids)) article.folder_ids.forEach(pushValue);
+  if (Array.isArray(article.folderIds)) article.folderIds.forEach(pushValue);
+  if (Array.isArray(article.categories)) article.categories.forEach(pushValue);
+  if (Array.isArray(article.folders)) article.folders.forEach(pushValue);
+
+  const metadata = article.metadata || article.meta || null;
+  if (metadata && typeof metadata === 'object') {
+    pushValue(metadata.category_id);
+    pushValue(metadata.categoryId);
+    pushValue(metadata.folder_id);
+    pushValue(metadata.folderId);
+    if (Array.isArray(metadata.category_ids)) metadata.category_ids.forEach(pushValue);
+    if (Array.isArray(metadata.categoryIds)) metadata.categoryIds.forEach(pushValue);
+    if (Array.isArray(metadata.categories)) metadata.categories.forEach(pushValue);
+    if (Array.isArray(metadata.folders)) metadata.folders.forEach(pushValue);
+  }
 
   return Array.from(new Set(ids));
 }
@@ -570,10 +592,18 @@ app.post('/helpjuice/sync', async (req, res) => {
     const selectedCategories = categories.filter((c) => selectedCategorySet.has(normalizeCategoryId(c.id)));
     const expandedCategoryIds = expandSelectedCategoryIds(selectedCategoryIds, categories);
     const allowedCategoryIds = new Set(expandedCategoryIds.map((id) => normalizeCategoryId(id)));
-    const articles = allArticles.filter((a) => {
+    let articles = allArticles.filter((a) => {
       const articleIds = collectArticleCategoryIds(a);
       return articleIds.some((id) => allowedCategoryIds.has(id));
     });
+
+    let filterFallbackUsed = false;
+    if (!articles.length && allArticles.length) {
+      // Some HelpJuice accounts return article/category relations in non-standard fields.
+      // Fall back to importing all fetched articles so the knowledge base is not emptied.
+      articles = allArticles;
+      filterFallbackUsed = true;
+    }
 
     const articleCount = articles.length;
     const categoryCount = categories.length || categoriesJson.total || categoriesJson.count || 0;
@@ -623,6 +653,7 @@ app.post('/helpjuice/sync', async (req, res) => {
       categoryCount,
       learnedArticles,
       withLinks,
+      filterFallbackUsed,
       syncedAt: new Date().toISOString()
     });
   } catch (e) {
