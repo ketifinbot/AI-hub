@@ -8,6 +8,11 @@ const mammoth = require('mammoth');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+const APP_DIR = __dirname;
+const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(APP_DIR, 'data');
+const uploadsDir = path.join(DATA_DIR, 'uploads');
+const textsDir = path.join(DATA_DIR, 'texts');
+const keysPath = path.join(DATA_DIR, 'api-keys.json');
 
 app.use(cors());
 app.use(express.json());
@@ -17,10 +22,34 @@ app.get('/health', (req, res) => {
   res.json({ success: true, status: 'ok' });
 });
 
-const dirs = [path.join(__dirname, 'uploads'), path.join(__dirname, 'texts')];
-dirs.forEach(dir => { if (!fs.existsSync(dir)) fs.mkdirSync(dir); });
+function ensureDir(dirPath) {
+  if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
+}
 
-const keysPath = path.join(__dirname, 'api-keys.json');
+function migrateLegacyFile(sourcePath, targetPath) {
+  if (!fs.existsSync(sourcePath) || fs.existsSync(targetPath)) return;
+  ensureDir(path.dirname(targetPath));
+  fs.copyFileSync(sourcePath, targetPath);
+}
+
+function migrateLegacyDirectory(sourceDir, targetDir) {
+  if (!fs.existsSync(sourceDir)) return;
+  ensureDir(targetDir);
+  fs.readdirSync(sourceDir).forEach((fileName) => {
+    const sourcePath = path.join(sourceDir, fileName);
+    const targetPath = path.join(targetDir, fileName);
+    if (!fs.statSync(sourcePath).isFile() || fs.existsSync(targetPath)) return;
+    fs.copyFileSync(sourcePath, targetPath);
+  });
+}
+
+ensureDir(DATA_DIR);
+ensureDir(uploadsDir);
+ensureDir(textsDir);
+migrateLegacyFile(path.join(APP_DIR, 'api-keys.json'), keysPath);
+migrateLegacyDirectory(path.join(APP_DIR, 'uploads'), uploadsDir);
+migrateLegacyDirectory(path.join(APP_DIR, 'texts'), textsDir);
+
 const allowedKeyIds = ['ant', 'oai', 'hj', 'cu', 'sl', 'gd', 'zh'];
 let keyStore = {
   ant: process.env.ANTHROPIC_API_KEY || '',
@@ -85,7 +114,7 @@ function resolveHelpjuiceArticleUrl(domain, article) {
   return '';
 }
 
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: uploadsDir });
 
 async function extractText(filePath, mimetype) {
   try {
@@ -170,12 +199,11 @@ FAQ:
 app.post('/upload', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).send('No file');
   const text = await extractText(req.file.path, req.file.mimetype);
-  fs.writeFileSync(path.join(__dirname, 'texts', req.file.filename + '.txt'), text);
+  fs.writeFileSync(path.join(textsDir, req.file.filename + '.txt'), text);
   res.json({ success: true, filename: req.file.originalname, text: text.substring(0, 500) });
 });
 
 app.get('/knowledge', (req, res) => {
-  const textsDir = path.join(__dirname, 'texts');
   const files = fs.readdirSync(textsDir);
   const knowledge = files.map(f => fs.readFileSync(path.join(textsDir, f), 'utf8')).join('\n\n');
   res.json({ knowledge });
@@ -241,8 +269,6 @@ function parseSelectedCategoryIds(raw) {
 }
 
 function clearKnowledgeDirectories() {
-  const uploadsDir = path.join(__dirname, 'uploads');
-  const textsDir = path.join(__dirname, 'texts');
   [uploadsDir, textsDir].forEach((dir) => {
     const files = fs.readdirSync(dir);
     files.forEach((fileName) => {
@@ -456,8 +482,6 @@ app.post('/helpjuice/sync', async (req, res) => {
     }
 
     // Build local knowledge from synced HelpJuice routes + content.
-    const uploadsDir = path.join(__dirname, 'uploads');
-    const textsDir = path.join(__dirname, 'texts');
     let learnedArticles = 0;
     let withLinks = 0;
 
@@ -543,8 +567,6 @@ app.post('/helpjuice/publish', async (req, res) => {
     catch { payload = { raw }; }
 
     // Save article locally for knowledge retrieval by agents.
-    const uploadsDir = path.join(__dirname, 'uploads');
-    const textsDir = path.join(__dirname, 'texts');
     const stamp = Date.now();
     const fileBase = `hj-${stamp}-${safeTitleForFile(title)}`;
     const htmlName = `${fileBase}.html`;
@@ -619,8 +641,6 @@ app.post('/generate-article', async (req, res) => {
 
 app.get('/files', (req, res) => {
   try {
-    const uploadsDir = path.join(__dirname, 'uploads');
-    const textsDir = path.join(__dirname, 'texts');
     const files = fs.readdirSync(uploadsDir).map(f => {
       const textFile = path.join(textsDir, f + '.txt');
       const text = fs.existsSync(textFile) ? fs.readFileSync(textFile, 'utf8') : '';
@@ -641,8 +661,6 @@ app.get('/files', (req, res) => {
 
 app.delete('/files/:filename', (req, res) => {
   const filename = req.params.filename;
-  const uploadsDir = path.join(__dirname, 'uploads');
-  const textsDir = path.join(__dirname, 'texts');
   try {
     const fp = path.join(uploadsDir, filename);
     const tp = path.join(textsDir, filename + '.txt');
@@ -655,7 +673,7 @@ app.delete('/files/:filename', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'finbot-hub.html'));
+  res.sendFile(path.join(APP_DIR, 'finbot-hub.html'));
 });
 
-app.listen(PORT, () => console.log(`Server: http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Server listening on port ${PORT}. Data dir: ${DATA_DIR}`));
