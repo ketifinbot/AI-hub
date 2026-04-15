@@ -3,16 +3,43 @@ const multer = require('multer');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const APP_DIR = __dirname;
-const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(APP_DIR, 'data');
+function resolveWritableDataDir() {
+  const configured = process.env.DATA_DIR;
+  const renderDisk = process.env.RENDER_DISK_PATH ? path.join(process.env.RENDER_DISK_PATH, 'data') : '';
+  const localDefault = path.join(APP_DIR, 'data');
+  const tempDefault = path.join(os.tmpdir(), 'finbot-hub-data');
+  const candidates = [configured, renderDisk, localDefault, tempDefault]
+    .filter(Boolean)
+    .map((candidate) => path.resolve(candidate));
+
+  for (const dir of candidates) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.accessSync(dir, fs.constants.W_OK);
+      return dir;
+    } catch (e) {
+      console.warn(`Skipping non-writable data dir: ${dir} (${e.message})`);
+    }
+  }
+
+  throw new Error('No writable data directory available');
+}
+
+const DATA_DIR = resolveWritableDataDir();
 const uploadsDir = path.join(DATA_DIR, 'uploads');
 const textsDir = path.join(DATA_DIR, 'texts');
 const keysPath = path.join(DATA_DIR, 'api-keys.json');
+const CHAT_HISTORY_LIMIT = 8;
+const DEFAULT_KNOWLEDGE_MAX_CHARS = 18000;
+const MAX_KNOWLEDGE_MAX_CHARS = 60000;
+const ANTHROPIC_TIMEOUT_MS = 65000;
 
 app.use(cors());
 app.use(express.json());
@@ -103,6 +130,76 @@ function extractCollection(payload, preferredKey) {
   if (payload.data && preferredKey && Array.isArray(payload.data[preferredKey])) return payload.data[preferredKey];
   if (payload.result && preferredKey && Array.isArray(payload.result[preferredKey])) return payload.result[preferredKey];
   return [];
+}
+
+function readKnowledgeEntries() {
+  if (!fs.existsSync(textsDir)) return [];
+  return fs.readdirSync(textsDir)
+    .filter((fileName) => fileName.toLowerCase().endsWith('.txt'))
+    .map((fileName) => {
+      const filePath = path.join(textsDir, fileName);
+      return {
+        fileName,
+        text: fs.readFileSync(filePath, 'utf8')
+      };
+    })
+    .filter((entry) => entry.text && entry.text.trim());
+}
+
+function normalizeSearchTerms(query) {
+  return String(query || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\u0590-\u05ff\s]+/g, ' ')
+    .split(/\s+/)
+    .map((term) => term.trim())
+    .filter((term) => term.length >= 2);
+}
+
+function scoreKnowledgeEntry(entryText, terms) {
+  if (!terms.length) return 0;
+  const haystack = String(entryText || '').toLowerCase();
+  return terms.reduce((score, term) => score + (haystack.includes(term) ? 1 : 0), 0);
+}
+
+function selectRelevantKnowledge(query, maxChars = DEFAULT_KNOWLEDGE_MAX_CHARS) {
+  const entries = readKnowledgeEntries();
+  if (!entries.length) return '';
+
+  const safeMaxChars = Math.max(1000, Math.min(Number(maxChars) || DEFAULT_KNOWLEDGE_MAX_CHARS, MAX_KNOWLEDGE_MAX_CHARS));
+  const terms = normalizeSearchTerms(query);
+  const rankedEntries = entries
+    .map((entry) => ({ ...entry, score: scoreKnowledgeEntry(entry.text, terms) }))
+    .sort((left, right) => {
+      if (right.score !== left.score) return right.score - left.score;
+      return right.text.length - left.text.length;
+    });
+
+  const picked = [];
+  let usedChars = 0;
+
+  rankedEntries.forEach((entry) => {
+    if (usedChars >= safeMaxChars) return;
+    if (terms.length && entry.score === 0 && picked.length > 0) return;
+
+    const remaining = safeMaxChars - usedChars;
+    if (remaining <= 0) return;
+
+    const text = entry.text.length > remaining ? entry.text.slice(0, remaining) : entry.text;
+    if (!text.trim()) return;
+
+    picked.push(text.trim());
+    usedChars += text.length + 2;
+  });
+
+  if (!picked.length) {
+    return entries
+      .map((entry) => entry.text)
+      .join('\n\n')
+      .slice(0, safeMaxChars)
+      .trim();
+  }
+
+  return picked.join('\n\n').trim();
 }
 
 function resolveHelpjuiceArticleUrl(domain, article) {
@@ -204,9 +301,14 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 });
 
 app.get('/knowledge', (req, res) => {
-  const files = fs.readdirSync(textsDir);
-  const knowledge = files.map(f => fs.readFileSync(path.join(textsDir, f), 'utf8')).join('\n\n');
-  res.json({ knowledge });
+  try {
+    const query = typeof req.query.q === 'string' ? req.query.q : '';
+    const requestedMaxChars = Number(req.query.maxChars) || DEFAULT_KNOWLEDGE_MAX_CHARS;
+    const knowledge = selectRelevantKnowledge(query, requestedMaxChars);
+    res.json({ knowledge });
+  } catch (e) {
+    res.status(500).json({ knowledge: '', error: e.message });
+  }
 });
 
 app.get('/api/keys/status', (req, res) => {
@@ -580,12 +682,22 @@ app.post('/helpjuice/publish', async (req, res) => {
 });
 
 app.post('/chat', async (req, res) => {
-  const { system, messages } = req.body;
+  const { system, messages } = req.body || {};
   try {
     const anthropicKey = keyStore.ant || process.env.ANTHROPIC_API_KEY || '';
     if (!anthropicKey) throw new Error('Anthropic API key is not configured');
+    const sanitizedMessages = Array.isArray(messages)
+      ? messages
+        .filter((message) => message && (message.role === 'user' || message.role === 'assistant'))
+        .map((message) => ({ role: message.role, content: String(message.content || '').trim() }))
+        .filter((message) => message.content)
+        .slice(-CHAT_HISTORY_LIMIT)
+      : [];
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), ANTHROPIC_TIMEOUT_MS);
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': anthropicKey,
@@ -595,16 +707,28 @@ app.post('/chat', async (req, res) => {
         model: 'claude-3-haiku-20240307',
         max_tokens: 1800,
         temperature: 0,
-        system: system || 'אתה עוזר פיננסי',
-        messages: messages.length > 0 ? messages : [{ role: 'user', content: 'שלום' }]
+        system: typeof system === 'string' && system.trim() ? system : 'אתה עוזר פיננסי',
+        messages: sanitizedMessages.length > 0 ? sanitizedMessages : [{ role: 'user', content: 'שלום' }]
       })
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || 'API Error');
-    res.json({ reply: data.content[0].text });
+    clearTimeout(timeoutId);
+    const raw = await response.text();
+    const data = raw ? JSON.parse(raw) : {};
+    if (!response.ok) throw new Error(data.error?.message || raw || 'API Error');
+    const reply = Array.isArray(data.content)
+      ? data.content
+        .filter((block) => block && typeof block.text === 'string')
+        .map((block) => block.text)
+        .join('\n\n')
+        .trim()
+      : '';
+    if (!reply) throw new Error('Empty AI response');
+    res.json({ reply });
   } catch(e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    const status = e.name === 'AbortError' ? 504 : 500;
+    const message = e.name === 'AbortError' ? 'Chat request timed out' : e.message;
+    res.status(status).json({ error: message });
   }
 });
 

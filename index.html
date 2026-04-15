@@ -206,6 +206,23 @@ body{font-family:'Noto Sans Hebrew',sans-serif;background:var(--gr50);color:var(
 @keyframes rot{to{transform:rotate(360deg)}}
 .empty{text-align:center;padding:32px;color:var(--gr400);font-size:13px}
 .empty-i{font-size:32px;margin-bottom:8px}
+
+/* HELPJUICE FOLDERS MODAL */
+.hj-modal{position:fixed;inset:0;background:rgba(15,23,42,.48);display:none;align-items:center;justify-content:center;padding:16px;z-index:1200}
+.hj-modal.on{display:flex}
+.hj-modal-card{width:min(680px,96vw);max-height:86vh;display:flex;flex-direction:column;background:var(--white);border:1px solid var(--gr200);border-radius:14px;box-shadow:0 20px 45px rgba(2,6,23,.24)}
+.hj-modal-head{padding:14px 18px;border-bottom:1px solid var(--gr100);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hj-modal-title{font-size:15px;font-weight:700;color:var(--gr800)}
+.hj-modal-sub{font-size:12px;color:var(--gr500);margin-top:2px}
+.hj-modal-body{padding:14px 18px;overflow:auto}
+.hj-folders{display:grid;grid-template-columns:1fr;gap:8px}
+.hj-folder-item{display:flex;align-items:flex-start;gap:10px;padding:10px 11px;border:1px solid var(--gr200);border-radius:10px;background:var(--gr50)}
+.hj-folder-item:hover{border-color:var(--g300);background:var(--g50)}
+.hj-folder-check{margin-top:2px}
+.hj-folder-name{font-size:13.5px;font-weight:600;color:var(--gr700)}
+.hj-folder-meta{font-size:11.5px;color:var(--gr500);margin-top:2px}
+.hj-modal-foot{padding:12px 18px;border-top:1px solid var(--gr100);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.hj-modal-msg{font-size:11.5px;color:var(--gr500)}
 </style>
 </head>
 <body>
@@ -265,13 +282,16 @@ body{font-family:'Noto Sans Hebrew',sans-serif;background:var(--gr50);color:var(
     <div class="sync-box">
       <div class="sync-hdr">
         <div class="ct"><div class="hj-logo">HJ</div>סינכרון מ-HelpJuice</div>
-        <button class="btn bind" onclick="syncHJ()" id="btnSync">🔄 סנכרן עכשיו</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn bgh" onclick="pickHJFolders()" id="btnPickFolders">📁 בחר תיקיות</button>
+          <button class="btn bind" onclick="syncHJ()" id="btnSync">🔄 סנכרן עכשיו</button>
+        </div>
       </div>
       <div class="sync-body">
         <div class="sync-row">
           <div class="sync-info">
             <div class="sync-name" id="hjDomain">לא מוגדר — הגדר API בהגדרות</div>
-            <div class="sync-sub">סינכרון אוטומטי כל 24 שעות</div>
+            <div class="sync-sub" id="hjFolderLabel">טרם נבחרו תיקיות לסינכרון</div>
           </div>
           <div class="sync-st" id="hjSt"><div class="sync-dot" style="background:var(--gr300)"></div>לא מחובר</div>
         </div>
@@ -282,6 +302,28 @@ body{font-family:'Noto Sans Hebrew',sans-serif;background:var(--gr50);color:var(
           <div class="sstat"><div class="sstat-n" id="hjUpd">—</div><div class="sstat-l">עדכון אחרון</div></div>
         </div>
         <div class="last-sync" id="hjLast">לא בוצע סינכרון עדיין</div>
+      </div>
+    </div>
+
+    <div class="hj-modal" id="hjFolderModal" onclick="if(event.target.id==='hjFolderModal')closeHJFolderModal()">
+      <div class="hj-modal-card">
+        <div class="hj-modal-head">
+          <div>
+            <div class="hj-modal-title">בחירת תיקיות ראשיות מ-HelpJuice</div>
+            <div class="hj-modal-sub">התוכן יסתנכרן מהתיקיות הראשיות שתסמני כולל כל תתי-התיקיות שלהן</div>
+          </div>
+          <button class="btn bgh" onclick="closeHJFolderModal()">סגור</button>
+        </div>
+        <div class="hj-modal-body">
+          <div class="hj-folders" id="hjFolderList"></div>
+        </div>
+        <div class="hj-modal-foot">
+          <div class="hj-modal-msg">שימי לב: הסינכרון מנקה את המאמרים הקיימים לפני טעינה חדשה</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn bgh" onclick="closeHJFolderModal()">ביטול</button>
+            <button class="btn bg" onclick="saveHJFolderSelectionFromModal()">שמור בחירה</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -553,7 +595,9 @@ body{font-family:'Noto Sans Hebrew',sans-serif;background:var(--gr50);color:var(
 </main>
 
 <script>
-const SRV = 'http://localhost:3000';
+const SRV = /^https?:/i.test(window.location.origin) ? window.location.origin : 'http://localhost:3000';
+const CHAT_HISTORY_LIMIT = 8;
+const KNOWLEDGE_MAX_CHARS = 18000;
 
 const pgCfg = {
   kb:  ['מאגר ידע','ניהול מסמכים לאימון הסוכנים',true],
@@ -758,6 +802,159 @@ function loadHJDomainInput() {
   if (inp && domain) inp.value = domain;
   const el = document.getElementById('hjDomain');
   if (el) el.textContent = domain || 'לא מוגדר — הגדר API בהגדרות';
+  updateHJFolderLabel(domain);
+}
+
+function hjFolderStorageKey(domain) {
+  return 'hjFolders:' + normalizeHJDomain(domain || '');
+}
+
+function getSelectedHJFolders(domain) {
+  const d = normalizeHJDomain(domain || getHJDomain(false));
+  if (!d) return [];
+  try {
+    const raw = localStorage.getItem(hjFolderStorageKey(d));
+    const parsed = JSON.parse(raw || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(v => String(v || '').trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function setSelectedHJFolders(domain, ids) {
+  const d = normalizeHJDomain(domain || getHJDomain(false));
+  if (!d) return;
+  const clean = Array.from(new Set((ids || []).map(v => String(v || '').trim()).filter(Boolean)));
+  localStorage.setItem(hjFolderStorageKey(d), JSON.stringify(clean));
+  updateHJFolderLabel(d);
+}
+
+function updateHJFolderLabel(domain) {
+  const d = normalizeHJDomain(domain || getHJDomain(false));
+  const label = document.getElementById('hjFolderLabel');
+  if (!label) return;
+  if (!d) {
+    label.textContent = 'טרם נבחרו תיקיות לסינכרון';
+    return;
+  }
+  const count = getSelectedHJFolders(d).length;
+  label.textContent = count ? ('נבחרו ' + count + ' תיקיות ראשיות לסינכרון') : 'טרם נבחרו תיקיות לסינכרון';
+}
+
+function getTopLevelHJCategories(categories) {
+  const ids = new Set((categories || []).map(c => String(c.id || '').trim()).filter(Boolean));
+  return (categories || []).filter((c) => {
+    const pid = String(c.parentId || '').trim();
+    return !pid || !ids.has(pid);
+  });
+}
+
+function countDescendantCategories(rootId, categories) {
+  const childMap = new Map();
+  (categories || []).forEach((c) => {
+    const id = String(c.id || '').trim();
+    if (!id) return;
+    const pid = String(c.parentId || '').trim();
+    if (!childMap.has(pid)) childMap.set(pid, []);
+    childMap.get(pid).push(id);
+  });
+
+  let count = 0;
+  const queue = [String(rootId || '').trim()];
+  const seen = new Set();
+  while (queue.length) {
+    const current = queue.shift();
+    const children = childMap.get(current) || [];
+    children.forEach((child) => {
+      if (seen.has(child)) return;
+      seen.add(child);
+      count += 1;
+      queue.push(child);
+    });
+  }
+  return count;
+}
+
+async function fetchHJCategories(domain) {
+  const r = await fetch(SRV + '/helpjuice/categories', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ domain })
+  });
+  const d = await r.json();
+  if (!r.ok || !d.success) throw new Error(d.error || 'טעינת תיקיות נכשלה');
+  return Array.isArray(d.categories) ? d.categories : [];
+}
+
+function closeHJFolderModal() {
+  const modal = document.getElementById('hjFolderModal');
+  if (modal) modal.classList.remove('on');
+}
+
+function openHJFolderModal(domain, categories) {
+  const list = document.getElementById('hjFolderList');
+  const modal = document.getElementById('hjFolderModal');
+  if (!list || !modal) return;
+
+  const selected = new Set(getSelectedHJFolders(domain));
+  const topLevel = getTopLevelHJCategories(categories)
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'he'));
+
+  list.innerHTML = topLevel.map((c) => {
+    const id = String(c.id || '').trim();
+    const safeId = id.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const checked = selected.has(id) ? 'checked' : '';
+    const nestedCount = countDescendantCategories(id, categories);
+    return '<label class="hj-folder-item" for="hjf-' + safeId + '">' +
+      '<input class="hj-folder-check" type="checkbox" id="hjf-' + safeId + '" data-hj-folder-id="' + id + '" ' + checked + '>' +
+      '<div>' +
+      '<div class="hj-folder-name">' + String(c.name || 'ללא שם') + '</div>' +
+      '<div class="hj-folder-meta">' + (nestedCount ? ('כולל ' + nestedCount + ' תתי-תיקיות') : 'ללא תתי-תיקיות') + '</div>' +
+      '</div>' +
+      '</label>';
+  }).join('');
+
+  modal.dataset.domain = domain;
+  modal.classList.add('on');
+}
+
+function saveHJFolderSelectionFromModal() {
+  const modal = document.getElementById('hjFolderModal');
+  if (!modal) return;
+  const domain = normalizeHJDomain(modal.dataset.domain || getHJDomain(false));
+  const checked = Array.from(document.querySelectorAll('#hjFolderList input[data-hj-folder-id]:checked'));
+  const ids = checked.map(el => String(el.getAttribute('data-hj-folder-id') || '').trim()).filter(Boolean);
+  if (!ids.length) {
+    alert('יש לבחור לפחות תיקיה ראשית אחת');
+    return;
+  }
+  setSelectedHJFolders(domain, ids);
+  closeHJFolderModal();
+  alert('✅ נשמרה בחירה של ' + ids.length + ' תיקיות ראשיות');
+}
+
+async function pickHJFolders() {
+  const key = window._keys?.hj;
+  if (!key) { alert('יש להגדיר HelpJuice API Key בהגדרות'); go('cfg', document.querySelector('.nb[onclick*="cfg"]')); return; }
+
+  const domain = getHJDomain(true);
+  if (!domain) { alert('יש להגדיר דומיין HelpJuice לפני בחירת תיקיות'); return; }
+
+  const btn = document.getElementById('btnPickFolders');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> טוען תיקיות...'; }
+  try {
+    const categories = await fetchHJCategories(domain);
+    if (!categories.length) {
+      alert('לא נמצאו תיקיות ב-HelpJuice');
+      return;
+    }
+    openHJFolderModal(domain, categories);
+  } catch (e) {
+    alert('שגיאה בטעינת תיקיות HelpJuice: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📁 בחר תיקיות'; }
+  }
 }
 
 async function syncHJ() {
@@ -767,13 +964,24 @@ async function syncHJ() {
   const domain = getHJDomain(true);
   if (!domain) { alert('יש להגדיר דומיין HelpJuice לפני סנכרון'); return; }
 
+  const categoryIds = getSelectedHJFolders(domain);
+  if (!categoryIds.length) {
+    alert('יש לבחור תיקיות HelpJuice לפני הסנכרון');
+    await pickHJFolders();
+    return;
+  }
+
+  if (!confirm('הסנכרון ימחק את כל המאמרים במאגר הקיים ויטען מחדש רק מהתיקיות שנבחרו. להמשיך?')) {
+    return;
+  }
+
   const btn = document.getElementById('btnSync');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> מסנכרן...';
   try {
     const r = await fetch(SRV + '/helpjuice/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain })
+      body: JSON.stringify({ domain, categoryIds, clearExisting: true })
     });
     const d = await r.json();
     if (!r.ok || !d.success) {
@@ -786,10 +994,11 @@ async function syncHJ() {
 
     document.getElementById('hjSt').innerHTML = '<div class="sync-dot" style="background:var(--g500)"></div>מחובר';
     document.getElementById('hjArt').textContent = d.articleCount ?? '0';
-    document.getElementById('hjCat').textContent = d.categoryCount ?? '0';
+    document.getElementById('hjCat').textContent = d.effectiveCategoryCount ?? d.selectedCategoryCount ?? categoryIds.length;
     document.getElementById('hjUpd').textContent = 'עכשיו';
     document.getElementById('hjLast').textContent = 'סונכרן בהצלחה: ' + new Date().toLocaleString('he-IL');
-    alert('✅ סינכרון HelpJuice הושלם!\nנלמדו ' + (d.learnedArticles ?? 0) + ' מאמרים, מתוכם ' + (d.withLinks ?? 0) + ' עם קישור למאמר.');
+    await loadDocs();
+    alert('✅ סינכרון HelpJuice הושלם!\nהמאגר נוקה ונטענו ' + (d.learnedArticles ?? 0) + ' מאמרים.\nנבחרו ' + (d.selectedCategoryCount ?? categoryIds.length) + ' תיקיות ראשיות ונסרקו ' + (d.effectiveCategoryCount ?? d.selectedCategoryCount ?? categoryIds.length) + ' תיקיות כולל תתי-תיקיות.');
   } catch (e) {
     alert('שגיאה בסינכרון HelpJuice: ' + e.message);
   } finally {
@@ -805,8 +1014,13 @@ const SYS_ALL = 'אתה עוזר מערכת FinBot בלבד. אין לתת יי�
 const SYS_REP = '\n\nסגנון חובה: תשובה מסודרת עם רווחים בין סעיפים ושלבים עם חצים ➡️ רק לפי המידע במאגר. אין ייעוץ חשבונאי; בשאלה מקצועית הפני לרו״ח מוסמך.';
 const SYS_CLI = '\n\nסגנון חובה: תשובה תפעולית קצרה עם נתיב במערכת ושלבים עם חצים ➡️ רק לפי המאגר. אין ייעוץ חשבונאי; בשאלה מקצועית הפני לרו״ח מוסמך.';
 
-async function getKnow() {
-  try { const r = await fetch(SRV+'/knowledge'); const d = await r.json(); return d.knowledge||''; } catch(e) { return ''; }
+async function getKnow(query) {
+  try {
+    const qs = new URLSearchParams({ q: query || '', maxChars: String(KNOWLEDGE_MAX_CHARS) });
+    const r = await fetch(SRV + '/knowledge?' + qs.toString());
+    const d = await r.json();
+    return d.knowledge || '';
+  } catch(e) { return ''; }
 }
 
 async function send(ag) {
@@ -818,20 +1032,22 @@ async function send(ag) {
   btn.disabled=true; btn.innerHTML='<span class="spin"></span>';
   addM(ag,'bot','...','typing');
   try {
-    const kn = await getKnow();
+    const kn = await getKnow(txt);
     if ((ag==='cli' || st.mode==='kb') && !kn.trim()) {
       document.querySelector('#msgs-'+ag+' .typing')?.remove();
       const noKb = 'לא נמצא מידע במאגר הידע בנושא הזה.';
       addM(ag,'bot',noKb);
       st.h.push({role:'assistant',content:noKb});
-      btn.disabled=false; btn.textContent='שלח';
       return;
     }
     const base = ag==='cli' ? SYS_KB : (st.mode==='kb'?SYS_KB:SYS_ALL);
     const extra = ag==='rep'?SYS_REP:SYS_CLI;
-    const sys = (kn ? base+'\n\nמידע מהמאגר:\n'+kn.substring(0,60000) : base)+extra;
-    const r = await fetch(SRV+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys,messages:st.h})});
-    const d = await r.json(); let reply = d.reply||'לא התקבלה תשובה';
+    const sys = (kn ? base+'\n\nמידע מהמאגר:\n'+kn : base)+extra;
+    const history = st.h.slice(-CHAT_HISTORY_LIMIT);
+    const r = await fetch(SRV+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({system:sys,messages:history})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'שגיאת שרת');
+    let reply = d.reply||'לא התקבלה תשובה';
     if (/אתה עוזר מערכת בלבד|מותר לענות אך ורק מתוך מאגר הידע|אסור לתת ייעוץ חשבונאי|לעולם אל תחשוף|אם המידע לא מופיע/.test(reply)) {
       reply = 'שלום! איך אפשר לעזור במערכת?';
     }
@@ -844,8 +1060,9 @@ async function send(ag) {
   } catch(e) {
     document.querySelector('#msgs-'+ag+' .typing')?.remove();
     addM(ag,'bot','שגיאה: '+e.message);
+  } finally {
+    btn.disabled=false; btn.textContent='שלח';
   }
-  btn.disabled=false; btn.textContent='שלח';
 }
 
 function addM(ag,role,txt,cls) {
