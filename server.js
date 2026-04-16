@@ -36,6 +36,7 @@ const DATA_DIR = resolveWritableDataDir();
 const uploadsDir = path.join(DATA_DIR, 'uploads');
 const textsDir = path.join(DATA_DIR, 'texts');
 const keysPath = path.join(DATA_DIR, 'api-keys.json');
+const settingsPath = path.join(DATA_DIR, 'app-settings.json');
 const CHAT_HISTORY_LIMIT = 8;
 const DEFAULT_KNOWLEDGE_MAX_CHARS = 18000;
 const MAX_KNOWLEDGE_MAX_CHARS = 60000;
@@ -81,11 +82,23 @@ const allowedKeyIds = ['ant', 'oai', 'hj', 'cu', 'sl', 'gd', 'zh'];
 let keyStore = {
   ant: process.env.ANTHROPIC_API_KEY || '',
   oai: '',
-  hj: '',
+  hj: process.env.HELPJUICE_API_KEY || '',
   cu: '',
   sl: '',
   gd: '',
   zh: ''
+};
+
+let appSettings = {
+  helpjuice: {
+    domain: process.env.HELPJUICE_DOMAIN ? normalizeHelpjuiceDomain(process.env.HELPJUICE_DOMAIN) : '',
+    categoryIds: [],
+    lastSyncAt: '',
+    articleCount: 0,
+    effectiveCategoryCount: 0,
+    selectedCategoryCount: 0,
+    withLinks: 0
+  }
 };
 
 if (fs.existsSync(keysPath)) {
@@ -97,8 +110,28 @@ if (fs.existsSync(keysPath)) {
   }
 }
 
+if (fs.existsSync(settingsPath)) {
+  try {
+    const loadedSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    appSettings = {
+      ...appSettings,
+      ...loadedSettings,
+      helpjuice: {
+        ...appSettings.helpjuice,
+        ...(loadedSettings.helpjuice || {})
+      }
+    };
+  } catch (e) {
+    console.error('Failed to load app-settings.json:', e.message);
+  }
+}
+
 function persistKeys() {
   fs.writeFileSync(keysPath, JSON.stringify(keyStore, null, 2), 'utf8');
+}
+
+function persistSettings() {
+  fs.writeFileSync(settingsPath, JSON.stringify(appSettings, null, 2), 'utf8');
 }
 
 function htmlToPlainText(html) {
@@ -122,6 +155,48 @@ function safeTitleForFile(title) {
     .substring(0, 60) || 'article';
 }
 
+function deriveDisplayName(fileName) {
+  const clean = String(fileName || '').replace(/\.(txt|html?|pdf|docx?)$/i, '');
+  return clean
+    .replace(/^hj-sync-/, '')
+    .replace(/^hj-\d+-/, '')
+    .replace(/^manual-\d+-/, '')
+    .replace(/[-_]+/g, ' ')
+    .trim() || 'מסמך';
+}
+
+function parseKnowledgeEntry(fileName, text) {
+  const normalizedText = String(text || '').replace(/\r\n/g, '\n').trim();
+  const lines = normalizedText.split('\n');
+  const metadata = { source: '', title: '', url: '', articleId: '' };
+  let bodyStart = 0;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+    if (!line) {
+      bodyStart = index + 1;
+      break;
+    }
+    if (line.startsWith('מקור:')) metadata.source = line.replace(/^מקור:\s*/, '').trim();
+    else if (line.startsWith('כותרת:')) metadata.title = line.replace(/^כותרת:\s*/, '').trim();
+    else if (line.startsWith('קישור:')) metadata.url = line.replace(/^קישור:\s*/, '').trim();
+    else if (line.startsWith('מזהה:')) metadata.articleId = line.replace(/^מזהה:\s*/, '').trim();
+    else break;
+    bodyStart = index + 1;
+  }
+
+  const body = lines.slice(bodyStart).join('\n').trim();
+  return {
+    fileName,
+    text: normalizedText,
+    body,
+    source: metadata.source || (fileName.startsWith('hj-') ? 'HelpJuice' : 'manual'),
+    title: metadata.title || deriveDisplayName(fileName),
+    url: metadata.url && metadata.url !== 'לא זמין' ? metadata.url : '',
+    articleId: metadata.articleId || ''
+  };
+}
+
 function extractCollection(payload, preferredKey) {
   if (!payload) return [];
   if (Array.isArray(payload)) return payload;
@@ -138,10 +213,7 @@ function readKnowledgeEntries() {
     .filter((fileName) => fileName.toLowerCase().endsWith('.txt'))
     .map((fileName) => {
       const filePath = path.join(textsDir, fileName);
-      return {
-        fileName,
-        text: fs.readFileSync(filePath, 'utf8')
-      };
+      return parseKnowledgeEntry(fileName, fs.readFileSync(filePath, 'utf8'));
     })
     .filter((entry) => entry.text && entry.text.trim());
 }
@@ -155,33 +227,36 @@ function normalizeSearchTerms(query) {
     .filter((term) => term.length >= 2);
 }
 
-function scoreKnowledgeEntry(entryText, terms) {
+function scoreKnowledgeEntry(entry, terms, rawQuery) {
   if (!terms.length) return 0;
-  const haystack = String(entryText || '').toLowerCase();
-  // Count total occurrences of each term (weighted: title line matches count extra)
-  const lines = haystack.split('\n');
-  const titleLine = lines.slice(0, 3).join(' '); // first 3 lines include כותרת/קישור
-  return terms.reduce((score, term) => {
+  const haystack = String(entry.body || entry.text || '').toLowerCase();
+  const titleLine = String(entry.title || '').toLowerCase();
+  const query = String(rawQuery || '').trim().toLowerCase();
+  let score = 0;
+  if (query && titleLine.includes(query)) score += 15;
+  if (query && haystack.includes(query)) score += 8;
+  return terms.reduce((total, term) => {
     const fullCount = (haystack.match(new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
     const titleBonus = titleLine.includes(term) ? 5 : 0;
-    return score + fullCount + titleBonus;
-  }, 0);
+    return total + fullCount + titleBonus;
+  }, score);
 }
 
 function selectRelevantKnowledge(query, maxChars = DEFAULT_KNOWLEDGE_MAX_CHARS) {
   const entries = readKnowledgeEntries();
-  if (!entries.length) return '';
+  if (!entries.length) return { knowledge: '', sources: [] };
 
   const safeMaxChars = Math.max(1000, Math.min(Number(maxChars) || DEFAULT_KNOWLEDGE_MAX_CHARS, MAX_KNOWLEDGE_MAX_CHARS));
   const terms = normalizeSearchTerms(query);
   const rankedEntries = entries
-    .map((entry) => ({ ...entry, score: scoreKnowledgeEntry(entry.text, terms) }))
+    .map((entry) => ({ ...entry, score: scoreKnowledgeEntry(entry, terms, query) }))
     .sort((left, right) => {
       if (right.score !== left.score) return right.score - left.score;
       return right.text.length - left.text.length;
     });
 
   const picked = [];
+  const sources = [];
   let usedChars = 0;
 
   rankedEntries.forEach((entry) => {
@@ -195,18 +270,36 @@ function selectRelevantKnowledge(query, maxChars = DEFAULT_KNOWLEDGE_MAX_CHARS) 
     if (!text.trim()) return;
 
     picked.push(text.trim());
+    if (!sources.some((source) => source.fileName === entry.fileName)) {
+      sources.push({
+        fileName: entry.fileName,
+        title: entry.title,
+        url: entry.url,
+        source: entry.source,
+        articleId: entry.articleId
+      });
+    }
     usedChars += text.length + 2;
   });
 
   if (!picked.length) {
-    return entries
-      .map((entry) => entry.text)
-      .join('\n\n')
-      .slice(0, safeMaxChars)
-      .trim();
+    return {
+      knowledge: entries
+        .map((entry) => entry.text)
+        .join('\n\n')
+        .slice(0, safeMaxChars)
+        .trim(),
+      sources: entries.slice(0, 3).map((entry) => ({
+        fileName: entry.fileName,
+        title: entry.title,
+        url: entry.url,
+        source: entry.source,
+        articleId: entry.articleId
+      }))
+    };
   }
 
-  return picked.join('\n\n').trim();
+  return { knowledge: picked.join('\n\n').trim(), sources: sources.slice(0, 3) };
 }
 
 function resolveHelpjuiceArticleUrl(domain, article) {
@@ -302,19 +395,73 @@ FAQ:
 
 app.post('/upload', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).send('No file');
+  const originalName = String(req.file.originalname || 'document').trim();
+  const parsedName = path.parse(originalName);
+  const fileBase = `manual-${Date.now()}-${safeTitleForFile(parsedName.name || 'document')}`;
+  const finalName = `${fileBase}${parsedName.ext || '.txt'}`;
+  const finalPath = path.join(uploadsDir, finalName);
   const text = await extractText(req.file.path, req.file.mimetype);
-  fs.writeFileSync(path.join(textsDir, req.file.filename + '.txt'), text);
-  res.json({ success: true, filename: req.file.originalname, text: text.substring(0, 500) });
+  const knowledgeText = [`כותרת: ${parsedName.name || originalName}`, '', text].join('\n').trim();
+
+  fs.renameSync(req.file.path, finalPath);
+  fs.writeFileSync(path.join(textsDir, `${finalName}.txt`), knowledgeText, 'utf8');
+  res.json({ success: true, filename: finalName, originalName, text: text.substring(0, 500) });
+});
+
+app.post('/save-text', (req, res) => {
+  try {
+    const text = String(req.body?.text || '').trim();
+    const name = String(req.body?.name || 'מסמך ידני').trim();
+    if (!text) return res.status(400).json({ success: false, error: 'No text provided' });
+
+    const fileBase = `manual-${Date.now()}-${safeTitleForFile(name)}`;
+    const fileName = `${fileBase}.txt`;
+    const storedText = [`כותרת: ${name}`, '', text].join('\n').trim();
+
+    fs.writeFileSync(path.join(uploadsDir, fileName), text, 'utf8');
+    fs.writeFileSync(path.join(textsDir, `${fileName}.txt`), storedText, 'utf8');
+    res.json({ success: true, filename: fileName, name });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 app.get('/knowledge', (req, res) => {
   try {
     const query = typeof req.query.q === 'string' ? req.query.q : '';
     const requestedMaxChars = Number(req.query.maxChars) || DEFAULT_KNOWLEDGE_MAX_CHARS;
-    const knowledge = selectRelevantKnowledge(query, requestedMaxChars);
-    res.json({ knowledge });
+    const result = selectRelevantKnowledge(query, requestedMaxChars);
+    res.json(result);
   } catch (e) {
-    res.status(500).json({ knowledge: '', error: e.message });
+    res.status(500).json({ knowledge: '', sources: [], error: e.message });
+  }
+});
+
+app.get('/settings/helpjuice', (req, res) => {
+  try {
+    res.json({ success: true, helpjuice: appSettings.helpjuice });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+app.post('/settings/helpjuice', (req, res) => {
+  try {
+    const body = req.body || {};
+    const domain = body.domain !== undefined ? normalizeHelpjuiceDomain(body.domain) : appSettings.helpjuice.domain;
+    const categoryIds = body.categoryIds !== undefined ? parseSelectedCategoryIds(body.categoryIds) : appSettings.helpjuice.categoryIds;
+
+    appSettings.helpjuice = {
+      ...appSettings.helpjuice,
+      ...body,
+      domain,
+      categoryIds
+    };
+
+    persistSettings();
+    res.json({ success: true, helpjuice: appSettings.helpjuice });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
   }
 });
 
@@ -657,6 +804,20 @@ app.post('/helpjuice/sync', async (req, res) => {
       learnedArticles += 1;
     }
 
+    const syncedAt = new Date().toISOString();
+
+    appSettings.helpjuice = {
+      ...appSettings.helpjuice,
+      domain,
+      categoryIds: selectedCategoryIds,
+      lastSyncAt: syncedAt,
+      articleCount,
+      effectiveCategoryCount: expandedCategoryIds.length,
+      selectedCategoryCount: selectedCategories.length,
+      withLinks
+    };
+    persistSettings();
+
     res.json({
       success: true,
       domain,
@@ -669,7 +830,7 @@ app.post('/helpjuice/sync', async (req, res) => {
       learnedArticles,
       withLinks,
       filterFallbackUsed,
-      syncedAt: new Date().toISOString()
+      syncedAt
     });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
@@ -813,19 +974,54 @@ app.get('/files', (req, res) => {
   try {
     const files = fs.readdirSync(uploadsDir).map(f => {
       const textFile = path.join(textsDir, f + '.txt');
-      const text = fs.existsSync(textFile) ? fs.readFileSync(textFile, 'utf8') : '';
+      const parsed = fs.existsSync(textFile)
+        ? parseKnowledgeEntry(f + '.txt', fs.readFileSync(textFile, 'utf8'))
+        : null;
       const source = f.startsWith('hj-') ? 'hj' : 'manual';
       return {
-        name: source === 'hj' ? f.replace(/^hj-\d+-/, '').replace(/\.html?$/i, '') : f.replace(/^\w+-/, ''),
+        name: parsed?.title || deriveDisplayName(f),
         filename: f,
         date: fs.statSync(path.join(uploadsDir, f)).mtime,
         source,
-        text: text.substring(0, 1000)
+        text: (parsed?.body || parsed?.text || '').substring(0, 1000),
+        url: parsed?.url || '',
+        title: parsed?.title || deriveDisplayName(f)
       };
     });
     res.json({ files });
   } catch (e) {
     res.json({ files: [] });
+  }
+});
+
+app.get('/files/:filename', (req, res) => {
+  try {
+    const filename = path.basename(req.params.filename || '');
+    if (!filename) return res.status(400).json({ success: false, error: 'Missing filename' });
+
+    const filePath = path.join(uploadsDir, filename);
+    const textPath = path.join(textsDir, `${filename}.txt`);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: 'File not found' });
+
+    const ext = path.extname(filename).toLowerCase();
+    const rawText = fs.existsSync(textPath) ? fs.readFileSync(textPath, 'utf8') : '';
+    const parsed = parseKnowledgeEntry(`${filename}.txt`, rawText);
+    const html = ['.html', '.htm'].includes(ext) ? fs.readFileSync(filePath, 'utf8') : '';
+
+    res.json({
+      success: true,
+      file: {
+        filename,
+        title: parsed.title || deriveDisplayName(filename),
+        url: parsed.url || '',
+        source: parsed.source || (filename.startsWith('hj-') ? 'HelpJuice' : 'manual'),
+        html,
+        text: parsed.body || rawText,
+        isHtml: Boolean(html)
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
   }
 });
 

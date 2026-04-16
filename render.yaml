@@ -7,6 +7,12 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true
+    disk:
+      name: finbot-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
+      - key: DATA_DIR
+        value: /var/data/data
