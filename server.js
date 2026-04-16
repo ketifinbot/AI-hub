@@ -158,7 +158,14 @@ function normalizeSearchTerms(query) {
 function scoreKnowledgeEntry(entryText, terms) {
   if (!terms.length) return 0;
   const haystack = String(entryText || '').toLowerCase();
-  return terms.reduce((score, term) => score + (haystack.includes(term) ? 1 : 0), 0);
+  // Count total occurrences of each term (weighted: title line matches count extra)
+  const lines = haystack.split('\n');
+  const titleLine = lines.slice(0, 3).join(' '); // first 3 lines include כותרת/קישור
+  return terms.reduce((score, term) => {
+    const fullCount = (haystack.match(new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+    const titleBonus = titleLine.includes(term) ? 5 : 0;
+    return score + fullCount + titleBonus;
+  }, 0);
 }
 
 function selectRelevantKnowledge(query, maxChars = DEFAULT_KNOWLEDGE_MAX_CHARS) {
